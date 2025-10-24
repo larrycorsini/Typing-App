@@ -80,6 +80,7 @@ wss.on('connection', ws => {
                 rooms[roomId] = { players: [ws], state: 'waiting' };
                 ws.roomId = roomId;
                 ws.send(JSON.stringify({ type: 'roomCreated', roomId }));
+                ws.send(JSON.stringify({ type: 'joinedRoom', room: getRoomInfo(roomId), yourId: ws.id }));
                 broadcastRoomList();
                 break;
 
@@ -90,7 +91,7 @@ wss.on('connection', ws => {
                     ws.roomId = data.roomId;
                     roomToJoin.players.push(ws);
                     broadcastToRoom(data.roomId, { type: 'playerJoined', player: { id: ws.id, name: ws.name } });
-                    ws.send(JSON.stringify({ type: 'joinedRoom', room: getRoomInfo(data.roomId) }));
+                    ws.send(JSON.stringify({ type: 'joinedRoom', room: getRoomInfo(data.roomId), yourId: ws.id }));
                     broadcastRoomList();
 
                     // Auto-start race if room is full

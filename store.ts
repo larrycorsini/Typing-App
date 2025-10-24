@@ -51,6 +51,7 @@ interface AppState {
   socketStatus: SocketStatus;
   onlineRooms: RoomInfo[];
   currentRoomId: string | null;
+  myId: string | null; // Our server-authoritative ID
   onlineCountdown: number;
 
   // Party Race State
@@ -139,6 +140,7 @@ export const useStore = create<AppState>((set, get) => ({
   socketStatus: 'disconnected',
   onlineRooms: [],
   currentRoomId: null,
+  myId: null,
   onlineCountdown: 0,
 
   partyPlayers: [],
@@ -180,7 +182,7 @@ export const useStore = create<AppState>((set, get) => ({
     get().connectToServer(); // Connect to WebSocket server
   },
   setRaceMode: async (mode) => {
-    set({ raceMode: mode });
+    set({ raceMode: mode, raceTheme: mode.startsWith('SOLO') ? get().raceTheme : null });
     if (mode === RaceMode.ONLINE_RACE) {
         set({ gameState: GameState.ONLINE_LOBBY });
         websocketService.sendMessage({type: 'getRoomList'});
@@ -204,7 +206,7 @@ export const useStore = create<AppState>((set, get) => ({
   initializeGame: async () => {
     const { playerName, raceMode, raceTheme, _resetTypingHook } = get();
     if (!playerName || !raceMode) return;
-    if (raceMode !== 'CUSTOM_TEXT' && !raceTheme) return;
+    if (raceMode.startsWith('SOLO') && !raceTheme) return;
 
     _resetTypingHook();
     rankCounter = 1;
@@ -239,7 +241,7 @@ export const useStore = create<AppState>((set, get) => ({
             });
          }
     } else if (raceMode === RaceMode.PARTY) {
-        paragraph = await getTypingParagraph(raceTheme!, RaceMode.SOLO_MEDIUM); // Party mode uses medium text
+        paragraph = await getTypingParagraph(RaceTheme.HARRY_POTTER, RaceMode.SOLO_MEDIUM); // Party mode uses medium text
     } else if (raceMode === RaceMode.ENDURANCE) {
         // Handled by the hook, but we need an initial non-empty text
         paragraph = "Get ready to type as many words as you can...";
@@ -248,17 +250,13 @@ export const useStore = create<AppState>((set, get) => ({
     set({ players: initialPlayers, textToType: paragraph });
   },
   startGame: () => {
-    const { textToType, raceMode, players, currentRoomId } = get();
+    const { textToType, raceMode } = get();
     if (textToType && !textToType.startsWith('Loading')) {
-      if (raceMode === RaceMode.ONLINE_RACE) {
-          // In online races, the server dictates the start
-          const player = players.find(p => p.isPlayer);
-          if (player && currentRoomId) {
-             set({ gameState: GameState.COUNTDOWN }); // Client-side countdown for feel
-          }
-      } else {
-         set({ elapsedTime: 0, gameState: GameState.COUNTDOWN });
-      }
+       if (raceMode === RaceMode.ONLINE_RACE) {
+            set({ gameState: GameState.COUNTDOWN }); // Server dictates start, but client shows countdown for feel
+       } else {
+           set({ elapsedTime: 0, gameState: GameState.COUNTDOWN });
+       }
     }
   },
   updateGame: (deltaTime: number) => {
@@ -269,8 +267,20 @@ export const useStore = create<AppState>((set, get) => ({
 
         if (state.raceMode === RaceMode.ONLINE_RACE) {
             websocketService.sendMessage({ type: 'progressUpdate', progress: state.playerStats.progress, wpm: state.playerStats.wpm });
-            // Bot/Ghost logic does not run in online mode
-            return { players: state.players.map(p => p.isPlayer ? { ...p, ...state.playerStats, wpmHistory: state.wpmHistory } : p) };
+            // FIX: Explicitly map properties for type safety and to avoid adding extra fields to the player object.
+            return {
+                players: state.players.map(p =>
+                    p.isPlayer
+                        ? {
+                              ...p,
+                              progress: state.playerStats.progress,
+                              wpm: state.playerStats.wpm,
+                              accuracy: state.playerStats.accuracy,
+                              wpmHistory: state.wpmHistory,
+                          }
+                        : p
+                ),
+            };
         }
 
         const botBehavior = getBotBehavior(state.raceMode);
@@ -344,7 +354,8 @@ export const useStore = create<AppState>((set, get) => ({
     const playerResult = finalPlayers.find(p => p.isPlayer);
     soundService.playRaceFinish(playerResult?.rank === 1);
     
-    if (playerResult && raceMode && raceTheme !== null) {
+    // FIX: Removed `&& raceTheme !== null` to correctly save stats for themeless modes like Endurance.
+    if (playerResult && raceMode) {
         const newlyUnlocked = checkAndUnlockAchievements({ wpm: playerStats.wpm, accuracy: playerStats.accuracy, rank: playerResult.rank!, theme: raceTheme, mode: raceMode, stats: persistentPlayerStats });
         newlyUnlocked.forEach(ach => {
             addToast({ message: `Achievement: ${ach.name}`, type: 'success' });
@@ -375,11 +386,11 @@ export const useStore = create<AppState>((set, get) => ({
     set({ socketStatus: status });
     if (status === 'disconnected' || status === 'error') {
         const { gameState, addToast, setGameState } = get();
-        if (gameState === GameState.ONLINE_LOBBY) {
+        if (gameState === GameState.ONLINE_LOBBY || get().raceMode === RaceMode.ONLINE_RACE) {
             addToast({ message: "Connection lost. Returning to lobby.", type: 'error' });
             setGameState(GameState.LOBBY);
         }
-        set({ onlineRooms: [], currentRoomId: null, players: [] });
+        set({ onlineRooms: [], currentRoomId: null, players: [], myId: null });
     }
   },
   handleServerMessage: (message) => {
@@ -391,13 +402,10 @@ export const useStore = create<AppState>((set, get) => ({
             const players = message.room.players.map(p => ({
                 id: p.id,
                 name: p.name,
-                isPlayer: p.id === PLAYER_ID, // This needs to be based on our client's ID on the server
+                isPlayer: p.id === message.yourId, // Use server-authoritative ID
                 progress: 0, wpm: 0, accuracy: 100,
             }));
-            // The server needs to send back our assigned ID, for now we fake it
-            const playerSelf = players.find(p => p.isPlayer);
-            if(playerSelf) playerSelf.id = PLAYER_ID; // Fixup
-            set({ currentRoomId: message.room.id, players });
+            set({ currentRoomId: message.room.id, players, myId: message.yourId });
             break;
         case 'playerJoined':
              set(state => ({ players: [...state.players, { id: message.player.id, name: message.player.name, isPlayer: false, progress: 0, wpm: 0, accuracy: 100}] }));
@@ -441,7 +449,7 @@ export const useStore = create<AppState>((set, get) => ({
   joinOnlineRoom: (roomId) => websocketService.sendMessage({ type: 'joinRoom', roomId, playerName: get().playerName }),
   leaveOnlineRoom: () => {
     // Implement leave room message if needed, for now handled by disconnect
-    set({ currentRoomId: null, players: [] });
+    set({ currentRoomId: null, players: [], myId: null });
   },
 
   startCustomTextGame: (text) => {

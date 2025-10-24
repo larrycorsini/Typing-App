@@ -1,4 +1,5 @@
 
+
 export enum GameState {
   NAME_SELECTION = 'NAME_SELECTION',
   LOBBY = 'LOBBY',
@@ -147,7 +148,7 @@ export type ClientToServerMessage =
 export type ServerToClientMessage =
   | { type: 'roomList'; rooms: RoomInfo[] }
   | { type: 'roomCreated'; roomId: string }
-  | { type: 'joinedRoom'; room: RoomInfo }
+  | { type: 'joinedRoom'; room: RoomInfo; yourId: string }
   | { type: 'playerJoined'; player: { id: string; name: string } }
   | { type: 'playerLeft'; playerId: string }
   | { type: 'raceStarting'; countdown: number }
