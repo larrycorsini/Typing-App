@@ -19,6 +19,7 @@ import PartySetup from './components/PartySetup';
 import PartyTransition from './components/PartyTransition';
 import OnlineLobby from './components/OnlineLobby';
 import CustomTextSetup from './components/CustomTextSetup';
+import CourseLobby from './components/CourseLobby';
 
 const App: React.FC = () => {
   const state = useStore();
@@ -37,6 +38,14 @@ const App: React.FC = () => {
     const seconds = (time % 60).toString().padStart(2, '0');
     return `${minutes}:${seconds}`;
   };
+  
+  const handleResultsModalClose = () => {
+    if (state.raceMode === RaceMode.COURSE) {
+        state.setGameState(GameState.COURSE_LOBBY);
+    } else {
+        state.setGameState(GameState.LOBBY);
+    }
+  }
 
   const renderLobby = () => (
     <div className="text-center w-full max-w-4xl">
@@ -67,6 +76,7 @@ const App: React.FC = () => {
        <div className="mb-8">
         <h3 className="text-xl text-[rgb(var(--color-text-primary))] font-bold mb-3" id="practice-label">Practice & Challenges</h3>
         <div className="flex flex-wrap justify-center gap-3">
+            <button onClick={() => state.setGameState(GameState.COURSE_LOBBY)} className={`font-bold py-2 px-5 rounded-lg text-lg transition-colors border-2 border-orange-500 hover:bg-orange-500/20 text-orange-400`}>Typing Course</button>
             <button onClick={() => state.setRaceMode(RaceMode.ENDURANCE)} className={`font-bold py-2 px-5 rounded-lg text-lg transition-colors border-2 ${state.raceMode === RaceMode.ENDURANCE ? 'bg-indigo-500 border-indigo-500 text-white' : 'border-[rgb(var(--color-border))] hover:bg-slate-700'}`}>Endurance (60s)</button>
             <button onClick={() => state.setRaceMode(RaceMode.CUSTOM_TEXT)} className={`font-bold py-2 px-5 rounded-lg text-lg transition-colors border-2 ${state.raceMode === RaceMode.CUSTOM_TEXT ? 'bg-teal-500 border-teal-500 text-white' : 'border-[rgb(var(--color-border))] hover:bg-slate-700'}`}>Custom Text</button>
             <button onClick={() => state.setRaceMode(RaceMode.DAILY_CHALLENGE)} className={`font-bold py-2 px-5 rounded-lg text-lg transition-colors border-2 ${state.raceMode === RaceMode.DAILY_CHALLENGE ? 'bg-amber-500 border-amber-500 text-white' : 'border-[rgb(var(--color-border))] hover:bg-slate-700'}`}>Daily Challenge</button>
@@ -114,6 +124,7 @@ const App: React.FC = () => {
     switch(state.gameState) {
       case GameState.NAME_SELECTION: return <NameSelection onNameSubmit={state.setPlayerName} />;
       case GameState.LOBBY: return renderLobby();
+      case GameState.COURSE_LOBBY: return <CourseLobby />;
       case GameState.ONLINE_LOBBY: return <OnlineLobby />;
       case GameState.PARTY_SETUP: return <PartySetup />;
       case GameState.PARTY_TRANSITION: return <PartyTransition />;
@@ -131,7 +142,7 @@ const App: React.FC = () => {
         {state.isMuted ? '🔇' : '🔊'}
       </button>
       {state.gameState === GameState.COUNTDOWN && <Countdown onComplete={() => state.setGameState(GameState.TYPING)} />}
-      {state.gameState === GameState.RESULTS && <ResultsModal players={state.players} onPlayAgain={() => state.setGameState(GameState.LOBBY)} />}
+      {state.gameState === GameState.RESULTS && <ResultsModal players={state.players} onPlayAgain={handleResultsModalClose} />}
       {state.showStatsModal && <PlayerStatsModal stats={state.persistentPlayerStats} onClose={() => state.setShowStatsModal(false)} />}
       {state.showLeaderboardModal && <LeaderboardModal onClose={() => state.setShowLeaderboardModal(false)} />}
       {state.showAchievementsModal && <AchievementsModal onClose={() => state.setShowAchievementsModal(false)} />}

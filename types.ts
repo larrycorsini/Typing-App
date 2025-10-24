@@ -10,6 +10,7 @@ export enum GameState {
   PARTY_TRANSITION = 'PARTY_TRANSITION',
   ONLINE_LOBBY = 'ONLINE_LOBBY',
   CUSTOM_TEXT_SETUP = 'CUSTOM_TEXT_SETUP',
+  COURSE_LOBBY = 'COURSE_LOBBY',
 }
 
 export enum RaceMode {
@@ -23,6 +24,7 @@ export enum RaceMode {
   ENDURANCE = 'ENDURANCE',
   CUSTOM_TEXT = 'CUSTOM_TEXT',
   DAILY_CHALLENGE = 'DAILY_CHALLENGE',
+  COURSE = 'COURSE',
 }
 
 export enum RaceTheme {
@@ -128,6 +130,21 @@ export interface TypingStats {
   mistypedChars: Record<string, number>;
 }
 
+// Typing Course Types
+export interface CourseLesson {
+    id: number;
+    title: string;
+    text: string;
+    goals: {
+        wpm: number;
+        accuracy: number;
+    };
+}
+
+export interface CourseSection {
+    title: string;
+    lessons: CourseLesson[];
+}
 
 // WebSocket Types
 export interface RoomInfo {

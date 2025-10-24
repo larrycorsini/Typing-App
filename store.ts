@@ -1,12 +1,12 @@
-
 import { create } from 'zustand';
-import { GameState, Player, RaceMode, RaceTheme, Toast, TypingStats, WpmDataPoint, PlayerStats, Achievement, LeaderboardEntry, GhostData, PlayerSettings, UnlockedCustomizations, PartyPlayer, RoomInfo, ServerToClientMessage } from './types';
+import { GameState, Player, RaceMode, RaceTheme, Toast, TypingStats, WpmDataPoint, PlayerStats, Achievement, LeaderboardEntry, GhostData, PlayerSettings, UnlockedCustomizations, PartyPlayer, RoomInfo, ServerToClientMessage, CourseLesson } from './types';
 import { getTypingParagraph } from './services/geminiService';
 import { soundService } from './services/soundService';
 import { getAchievements, checkAndUnlockAchievements } from './services/achievementService';
 import { getLeaderboard, addLeaderboardEntry } from './services/leaderboardService';
 import { customizationService } from './services/customizationService';
 import { websocketService } from './services/websocketService';
+import { courseService } from './services/courseService';
 
 const BOT_NAMES = ['RacerX', 'Speedy', 'KeyMaster', 'TypoBot', 'CodeCrusher', 'LyricLover', 'QuoteQueen', 'GhostRider', 'PixelPusher', 'ByteBlaster'];
 const PLAYER_ID = 'player-1';
@@ -70,6 +70,10 @@ interface AppState {
   partyPlayers: PartyPlayer[];
   currentPartyPlayerIndex: number;
 
+  // Typing Course State
+  courseProgress: number; // Highest unlocked lesson ID
+  currentLesson: CourseLesson | null;
+
   // Typing Hook State
   typed: string;
   errors: Set<number>;
@@ -115,6 +119,9 @@ interface AppState {
   // New Mode Actions
   startCustomTextGame: (text: string) => void;
 
+  // Course Actions
+  startCourseLesson: (lesson: CourseLesson) => void;
+  
   // Party Race Actions
   addPartyPlayer: (name: string) => void;
   removePartyPlayer: (name: string) => void;
@@ -161,6 +168,9 @@ export const useStore = create<AppState>((set, get) => ({
   partyPlayers: [],
   currentPartyPlayerIndex: 0,
 
+  courseProgress: 1,
+  currentLesson: null,
+
   typed: '',
   errors: new Set(),
   playerStats: { wpm: 0, accuracy: 0, progress: 0, mistypedChars: {} },
@@ -194,7 +204,8 @@ export const useStore = create<AppState>((set, get) => ({
     set({ 
         playerName: name, 
         gameState: GameState.LOBBY,
-        showTutorialModal: !tutorialSeen
+        showTutorialModal: !tutorialSeen,
+        courseProgress: courseService.getCourseProgress(),
     });
     
     const storedStats = localStorage.getItem('gemini-type-racer-stats');
@@ -233,7 +244,7 @@ export const useStore = create<AppState>((set, get) => ({
 
     _resetTypingHook();
     rankCounter = 1;
-    set({ textToType: 'Loading passage...' });
+    set({ textToType: 'Loading passage...', currentLesson: null });
 
     const currentRequestId = get().textGenerationRequestCounter + 1;
     set({ textGenerationRequestCounter: currentRequestId });
@@ -256,7 +267,7 @@ export const useStore = create<AppState>((set, get) => ({
         } else {
              set({textToType: "Could not load ghost data."}); return;
         }
-    } else if (![RaceMode.PARTY, RaceMode.ONLINE_RACE, RaceMode.ENDURANCE, RaceMode.CUSTOM_TEXT, RaceMode.DAILY_CHALLENGE].includes(raceMode)) {
+    } else if (![RaceMode.PARTY, RaceMode.ONLINE_RACE, RaceMode.ENDURANCE, RaceMode.CUSTOM_TEXT, RaceMode.DAILY_CHALLENGE, RaceMode.COURSE].includes(raceMode)) {
          const fetchedParagraph = await getTypingParagraph(raceTheme!, raceMode);
          if (get().textGenerationRequestCounter !== currentRequestId) return;
          paragraph = fetchedParagraph;
@@ -368,6 +379,26 @@ export const useStore = create<AppState>((set, get) => ({
         const { playerStats } = get();
         websocketService.sendMessage({ type: 'raceFinished', wpm: playerStats.wpm, accuracy: playerStats.accuracy });
     }
+    
+    if (get().raceMode === RaceMode.COURSE) {
+        const { currentLesson, playerStats, courseProgress, addToast } = get();
+        if (currentLesson) {
+            const passed = playerStats.wpm >= currentLesson.goals.wpm && playerStats.accuracy >= currentLesson.goals.accuracy;
+            if (passed) {
+                addToast({ message: "Lesson Complete!", type: 'success' });
+                const nextLessonId = currentLesson.id + 1;
+                if (nextLessonId > courseProgress && nextLessonId <= courseService.getTotalLessons()) {
+                    courseService.saveCourseProgress(nextLessonId);
+                    set({ courseProgress: nextLessonId });
+                }
+            } else {
+                addToast({ message: "Keep practicing!", type: 'info' });
+            }
+        }
+        set({ gameState: GameState.RESULTS });
+        return;
+    }
+
 
     const { players, raceMode, raceTheme, persistentPlayerStats, addToast, playerStats } = get();
     
@@ -408,7 +439,7 @@ export const useStore = create<AppState>((set, get) => ({
   resetLobby: () => {
     get()._resetTypingHook();
     get().leaveOnlineRoom();
-    set({ raceMode: null, textToType: '', players: [], elapsedTime: 0, partyPlayers: [], currentPartyPlayerIndex: 0 });
+    set({ raceMode: null, textToType: '', players: [], elapsedTime: 0, partyPlayers: [], currentPartyPlayerIndex: 0, currentLesson: null });
   },
   
   // Online Actions
@@ -458,8 +489,17 @@ export const useStore = create<AppState>((set, get) => ({
             });
             break;
         case 'dailyChallenge':
-            set({ textToType: message.text });
-            get().initializeGame();
+            get()._resetTypingHook();
+            rankCounter = 1;
+            set(state => ({ 
+                textToType: message.text,
+                players: [{
+                    id: PLAYER_ID, 
+                    name: state.playerName, 
+                    isPlayer: true, 
+                    progress: 0, wpm: 0, accuracy: 100, wpmHistory: []
+                }]
+            }));
             break;
         case 'error':
             get().addToast({ message: message.message, type: 'error' });
@@ -478,6 +518,20 @@ export const useStore = create<AppState>((set, get) => ({
     if (!text.trim()) return;
     set({ textToType: text.trim(), players: [{ id: PLAYER_ID, name: get().playerName, isPlayer: true, progress: 0, wpm: 0, accuracy: 100 }] });
     get().startGame();
+  },
+
+  // Course Actions
+  startCourseLesson: (lesson) => {
+    get()._resetTypingHook();
+    rankCounter = 1;
+    set({
+      raceMode: RaceMode.COURSE,
+      currentLesson: lesson,
+      textToType: lesson.text,
+      players: [{ id: PLAYER_ID, name: get().playerName, isPlayer: true, progress: 0, wpm: 0, accuracy: 100 }],
+      elapsedTime: 0,
+      gameState: GameState.COUNTDOWN,
+    });
   },
 
   // Party Race Actions

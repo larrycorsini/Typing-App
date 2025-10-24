@@ -38,63 +38,80 @@ const MistakeAnalysis: React.FC<{ mistypedChars: TypingStats['mistypedChars'] }>
 
 const ResultsModal: React.FC<ResultsModalProps> = ({ players, onPlayAgain }) => {
   const trapRef = useFocusTrap<HTMLDivElement>(onPlayAgain);
-  const { partyPlayers, raceMode, playerStats } = useStore(state => ({
+  const { partyPlayers, raceMode, playerStats, currentLesson } = useStore(state => ({
     partyPlayers: state.partyPlayers,
     raceMode: state.raceMode,
     playerStats: state.playerStats,
+    currentLesson: state.currentLesson,
   }));
   const isPartyMode = raceMode === RaceMode.PARTY;
   const isOnlineMode = raceMode === RaceMode.ONLINE_RACE;
-
-  const sortedResults: (Player | PartyPlayer)[] = isPartyMode
-    ? [...partyPlayers].sort((a, b) => (a.rank ?? Infinity) - (b.rank ?? Infinity))
-    : [...players].sort((a, b) => (a.rank ?? Infinity) - (b.rank ?? Infinity));
-
+  const isCourseMode = raceMode === RaceMode.COURSE;
+  
   const playerResult = players.find(p => p.isPlayer);
   const isWinner = playerResult?.rank === 1;
 
   let title = 'Race Finished!';
-  if (isPartyMode) {
-    title = `👑 ${sortedResults[0]?.name} Wins! 👑`;
+  let subtitle = '';
+
+  if (isCourseMode && currentLesson) {
+    const passed = playerStats.wpm >= currentLesson.goals.wpm && playerStats.accuracy >= currentLesson.goals.accuracy;
+    title = passed ? "Lesson Complete!" : "Keep Practicing!";
+    subtitle = `Your score: ${playerStats.wpm} WPM, ${playerStats.accuracy}% Accuracy`;
+  } else if (isPartyMode) {
+    title = `👑 ${partyPlayers.sort((a,b) => (a.rank ?? 0) - (b.rank ?? 0))[0]?.name} Wins! 👑`;
+    subtitle = "Here are the final standings.";
   } else if (isOnlineMode) {
     title = playerResult?.rank ? `You finished #${playerResult.rank}!` : 'Race Finished!';
-  } else if (isWinner) {
-    title = 'You Won!';
+    subtitle = `You typed at ${playerStats.wpm} WPM.`;
+  } else {
+    title = isWinner ? 'You Won!' : 'Race Finished!';
+    subtitle = `You placed #${playerResult?.rank || 'N/A'}`;
   }
   
-  let subtitle = isPartyMode 
-    ? "Here are the final standings." 
-    : isOnlineMode 
-    ? `You typed at ${playerStats.wpm} WPM.`
-    : `You placed #${playerResult?.rank || 'N/A'}`;
+  const sortedResults: (Player | PartyPlayer)[] = isPartyMode
+    ? [...partyPlayers].sort((a, b) => (a.rank ?? Infinity) - (b.rank ?? Infinity))
+    : [...players].sort((a, b) => (a.rank ?? Infinity) - (b.rank ?? Infinity));
 
   return (
     <div className="absolute inset-0 bg-slate-900/80 flex items-center justify-center z-20 backdrop-blur-sm animate-fadeIn" role="dialog" aria-modal="true" aria-labelledby="results-title">
       <div ref={trapRef} className="bg-slate-800 p-8 rounded-xl shadow-2xl w-full max-w-lg border border-slate-700 animate-scaleIn" onClick={e => e.stopPropagation()}>
-        <h2 id="results-title" className={`text-4xl font-bold text-center mb-2 ${isWinner || isPartyMode ? 'text-yellow-400' : 'text-cyan-400'}`}>
+        <h2 id="results-title" className={`text-4xl font-bold text-center mb-2 ${isWinner || isPartyMode || (isCourseMode && title.includes('Complete')) ? 'text-yellow-400' : 'text-cyan-400'}`}>
           {title}
         </h2>
         <p className="text-center text-slate-300 text-xl mb-6">{subtitle}</p>
-
-        <div className="space-y-3 mb-6 max-h-60 overflow-y-auto pr-2">
-          {sortedResults.map((p, index) => (
-            <div key={p.name + index} className={`flex justify-between items-center p-3 rounded-lg transition-transform duration-300 ${(p as Player).isPlayer ? 'bg-cyan-900/50' : 'bg-slate-700/50'} ${(p as Player).isPlayer && isWinner ? 'scale-105 ring-2 ring-yellow-400 shadow-lg' : ''}`}>
-              <span className="font-semibold text-slate-200 truncate pr-2">
-                {p.rank === 1 ? '👑 ' : ''}#{p.rank} {p.name} {(p as Player).isPlayer && '(You)'}
-              </span>
-              <span className="font-bold text-cyan-300">{p.wpm} WPM</span>
+        
+        {isCourseMode && currentLesson && (
+          <div className="bg-slate-700/50 p-4 rounded-lg mb-4 text-center">
+            <h4 className="font-bold text-slate-200">Lesson Goals</h4>
+            <div className="flex justify-center gap-8 mt-2">
+                <p><span className="font-semibold text-slate-300">WPM: </span>{currentLesson.goals.wpm}</p>
+                <p><span className="font-semibold text-slate-300">Accuracy: </span>{currentLesson.goals.accuracy}%</p>
             </div>
-          ))}
-        </div>
+          </div>
+        )}
 
-        {playerResult?.wpmHistory && !isPartyMode && <WpmChart data={playerResult.wpmHistory} />}
+        {!isCourseMode && (
+            <div className="space-y-3 mb-6 max-h-60 overflow-y-auto pr-2">
+              {sortedResults.map((p, index) => (
+                <div key={p.name + index} className={`flex justify-between items-center p-3 rounded-lg transition-transform duration-300 ${(p as Player).isPlayer ? 'bg-cyan-900/50' : 'bg-slate-700/50'} ${(p as Player).isPlayer && isWinner ? 'scale-105 ring-2 ring-yellow-400 shadow-lg' : ''}`}>
+                  <span className="font-semibold text-slate-200 truncate pr-2">
+                    {p.rank === 1 ? '👑 ' : ''}#{p.rank} {p.name} {(p as Player).isPlayer && '(You)'}
+                  </span>
+                  <span className="font-bold text-cyan-300">{p.wpm} WPM</span>
+                </div>
+              ))}
+            </div>
+        )}
+
+        {playerResult?.wpmHistory && !isPartyMode && !isCourseMode && <WpmChart data={playerResult.wpmHistory} />}
         {playerStats.mistypedChars && !isPartyMode && <MistakeAnalysis mistypedChars={playerStats.mistypedChars} />}
 
         <button 
           onClick={onPlayAgain}
           className="w-full bg-cyan-500 text-slate-900 font-bold py-3 px-6 rounded-lg text-xl hover:bg-cyan-400 focus:outline-none focus:ring-4 focus:ring-cyan-300/50 transition-all duration-300 transform hover:scale-105 mt-8"
         >
-          {isPartyMode ? 'New Game' : 'Back to Lobby'}
+          {isPartyMode ? 'New Game' : isCourseMode ? 'Back to Course' : 'Back to Lobby'}
         </button>
       </div>
     </div>
