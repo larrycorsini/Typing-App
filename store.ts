@@ -1,12 +1,10 @@
 import { create } from 'zustand';
 import { GameState, Player, RaceMode, RaceTheme, Toast, TypingStats, WpmDataPoint, PlayerStats, Achievement, LeaderboardEntry, GhostData, PlayerSettings, UnlockedCustomizations, PartyPlayer, RoomInfo, ServerToClientMessage } from './types';
-import { useTypingGame } from './hooks/useTypingGame';
 import { getTypingParagraph } from './services/geminiService';
 import { soundService } from './services/soundService';
 import { getAchievements, checkAndUnlockAchievements } from './services/achievementService';
 import { getLeaderboard, addLeaderboardEntry } from './services/leaderboardService';
 import { customizationService } from './services/customizationService';
-import React, { useEffect } from 'react';
 import { websocketService } from './services/websocketService';
 
 const BOT_NAMES = ['RacerX', 'Speedy', 'KeyMaster', 'TypoBot', 'CodeCrusher', 'LyricLover', 'QuoteQueen', 'GhostRider', 'PixelPusher', 'ByteBlaster'];
@@ -126,7 +124,6 @@ interface AppState {
   _setTypingHookState: (newState: Partial<Pick<AppState, 'typed' | 'errors' | 'playerStats' | 'isFinished' | 'wpmHistory' | 'textToType'>>) => void;
 }
 
-let gameLoopInterval: NodeJS.Timeout | null = null;
 let rankCounter = 1;
 
 export const useStore = create<AppState>((set, get) => ({
@@ -332,9 +329,6 @@ export const useStore = create<AppState>((set, get) => ({
         websocketService.sendMessage({ type: 'raceFinished', wpm: playerStats.wpm, accuracy: playerStats.accuracy });
     }
 
-    if (gameLoopInterval) clearInterval(gameLoopInterval);
-    gameLoopInterval = null;
-
     const { players, raceMode, raceTheme, persistentPlayerStats, addToast, playerStats } = get();
     
     let finalPlayers = [...players];
@@ -377,7 +371,17 @@ export const useStore = create<AppState>((set, get) => ({
   },
   
   // Online Actions
-  setSocketStatus: (status) => set({ socketStatus: status }),
+  setSocketStatus: (status) => {
+    set({ socketStatus: status });
+    if (status === 'disconnected' || status === 'error') {
+        const { gameState, addToast, setGameState } = get();
+        if (gameState === GameState.ONLINE_LOBBY) {
+            addToast({ message: "Connection lost. Returning to lobby.", type: 'error' });
+            setGameState(GameState.LOBBY);
+        }
+        set({ onlineRooms: [], currentRoomId: null, players: [] });
+    }
+  },
   handleServerMessage: (message) => {
     switch (message.type) {
         case 'roomList':
@@ -536,55 +540,3 @@ export const useStore = create<AppState>((set, get) => ({
   _resetTypingHook: () => {},
   _setTypingHookState: (newState) => set(newState),
 }));
-
-export const AppStateSync: React.FC = () => {
-    const state = useStore();
-    const { typed, errors, stats, isFinished: hookIsFinished, reset, wpmHistory: hookWpmHistory, textToType: hookTextToType } = useTypingGame(state.textToType, state.raceMode, state.gameState === GameState.TYPING);
-
-    useEffect(() => { useStore.setState({ _resetTypingHook: reset }); }, [reset]);
-    useEffect(() => {
-        state._setTypingHookState({ typed, errors, playerStats: stats, isFinished: hookIsFinished, wpmHistory: hookWpmHistory, textToType: hookTextToType });
-    }, [typed, errors, stats, hookIsFinished, hookWpmHistory, hookTextToType, state._setTypingHookState]);
-
-    useEffect(() => {
-        if (state.gameState === GameState.TYPING) {
-            gameLoopInterval = setInterval(() => {
-                useStore.setState(s => ({ elapsedTime: s.elapsedTime + 1 }));
-                useStore.getState().updateGame(1);
-            }, 1000);
-        } else {
-            if (gameLoopInterval) clearInterval(gameLoopInterval);
-            gameLoopInterval = null;
-        }
-        return () => { if (gameLoopInterval) clearInterval(gameLoopInterval); };
-    }, [state.gameState]);
-    
-    useEffect(() => {
-        if (state.isFinished && state.gameState === GameState.TYPING) {
-            let player = useStore.getState().players.find(p => p.isPlayer);
-            if(player && !player.rank && state.raceMode !== RaceMode.PARTY) {
-                player.rank = rankCounter++;
-                useStore.setState(s => ({ players: s.players.map(p => p.id === player!.id ? player! : p)}));
-                
-                const { totalRaces, wins, avgWpm, avgAccuracy, bestWpm } = state.persistentPlayerStats;
-                const newTotalRaces = totalRaces + 1;
-                const newWins = wins + (player.rank === 1 ? 1 : 0);
-                const newAvgWpm = ((avgWpm * totalRaces) + state.playerStats.wpm) / newTotalRaces;
-                const newAvgAccuracy = ((avgAccuracy * totalRaces) + state.playerStats.accuracy) / newTotalRaces;
-                const newBestWpm = Math.max(bestWpm, state.playerStats.wpm);
-                
-                const newStats: PlayerStats = { totalRaces: newTotalRaces, wins: newWins, bestWpm: newBestWpm, avgWpm: Math.round(newAvgWpm), avgAccuracy: Math.round(newAvgAccuracy) };
-                useStore.setState({ persistentPlayerStats: newStats });
-                localStorage.setItem('gemini-type-racer-stats', JSON.stringify(newStats));
-
-                if (state.playerStats.wpm >= bestWpm) {
-                     const ghostData: GhostData = { wpmHistory: state.wpmHistory, finalWpm: state.playerStats.wpm, textLength: state.textToType.length };
-                     localStorage.setItem('gemini-type-racer-ghost', JSON.stringify(ghostData));
-                }
-            }
-            useStore.getState().endRace();
-        }
-    }, [state.isFinished, state.gameState, state.playerStats, state.wpmHistory, state.textToType, state.playerName, state.persistentPlayerStats]);
-
-    return null;
-}

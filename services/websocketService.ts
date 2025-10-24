@@ -45,8 +45,9 @@ const connect = () => {
         }
     };
 
-    socket.onerror = (error) => {
-        console.error('WebSocket error:', error);
+    socket.onerror = () => {
+        console.error('WebSocket connection error. Ensure the backend server is running (`node server.js`).');
+        useStore.getState().addToast({ message: "Connection to server failed. Online features are unavailable.", type: 'error' });
         useStore.getState().setSocketStatus('error');
         socket?.close();
     };

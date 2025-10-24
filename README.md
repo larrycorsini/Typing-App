@@ -95,3 +95,17 @@ The application is architected for scalability and maintainability, with a clear
     -   Broadcasting player progress to everyone in a room in real-time.
     -   Serving the daily challenge text to ensure consistency for all players.
 -   **Communication (`websocketService.ts`)**: A client-side service that acts as the bridge between the React app and the backend server, managing the WebSocket connection and message flow.
+
+---
+
+## 🐛 Troubleshooting
+
+### WebSocket Connection Errors
+
+If you see a "Connection to server failed" message or errors in the console related to WebSockets, it almost always means the backend server is not running.
+
+**Solution:**
+1.  Open a terminal in the project's root directory.
+2.  Run the command `node server.js` (or `npm start` if you created the `package.json`).
+3.  You should see the message `Gemini Type Racer WebSocket server started on port 8080...`.
+4.  Keep this terminal open and refresh the application.
