@@ -12,12 +12,13 @@ Welcome to Gemini Type Racer, a modern, feature-rich typing game where you can t
 - **Real-Time Online Multiplayer**: Join a public lobby, create a room, and race against players from around the world. Your progress is updated character-by-character for a thrilling, competitive experience.
 - **Dynamic Content via Gemini API**: Never type the same thing twice! Choose from various themes, and the Gemini API will generate a unique paragraph for you.
 - **Multiple Game & Practice Modes**:
+    - **Typing Course**: A structured set of lessons to build your typing skills from the ground up, starting with the home row and progressing through more complex exercises.
     - **Solo Race**: Compete against AI bots with Easy, Medium, or Hard difficulty settings.
     - **Party Race**: A local "hotseat" multiplayer mode! Add up to 4 players to take turns typing the same passage on the same device.
     - **Ghost Race**: Race against a recording of your own personal best performance to visualize your improvement.
     - **Endurance Mode**: Test your stamina. Type as many words as you can in 60 seconds from an endless stream.
     - **Custom Text Mode**: Paste in your own text to practice with anything you want.
-    - **Daily Challenge**: Compete on a unique, daily paragraph that is the same for everyone, with its own leaderboard.
+    - **Daily Challenge**: Compete on a unique, daily paragraph that is the same for everyone.
 - **Player Customization**:
     - **UI Themes**: Unlock cosmetic UI themes by earning achievements.
     - **Sound Packs**: Unlock and equip different typing sound profiles (Classic, Sci-Fi, Mechanical) for a personalized audio experience.
@@ -28,50 +29,67 @@ Welcome to Gemini Type Racer, a modern, feature-rich typing game where you can t
 
 ---
 
-## 🚀 How to Run the App (Frontend & Backend)
+## 🚀 How to Run the App (From GitHub)
 
-This project consists of a frontend (the React app) and a backend (a Node.js server for online features). You need to run both for all features to work.
+This project consists of a frontend (a build-less React app) and a backend (a Node.js server for online features). You need to run both for all features to work.
 
-### 1. Running the Frontend
+### Prerequisites
+- [Node.js](https://nodejs.org/) (v18 or later recommended) and npm
+- A Google Gemini API Key. You can get one from [Google AI Studio](https://aistudio.google.com/app/apikey).
 
-The frontend is set up in a build-free development environment. There are no command-line tools or installation steps required.
-
--   **Live Preview**: Simply interact with the live preview panel.
--   **Automatic Updates**: Any changes made to the code are automatically compiled and updated in the preview panel in real-time.
-
-### 2. Running the Backend Server
+### Step 1: Running the Backend Server
 
 The backend server powers the Online Multiplayer and Daily Challenge modes.
 
--   **Prerequisites**: You need to have [Node.js](https://nodejs.org/) installed on your system.
--   **Installation**:
-    1.  Create a `package.json` file in the root directory with the following content:
-        ```json
-        {
-          "name": "gemini-type-racer-server",
-          "version": "1.0.0",
-          "description": "",
-          "main": "server.js",
-          "scripts": {
-            "start": "node server.js"
-          },
-          "keywords": [],
-          "author": "",
-          "license": "ISC",
-          "dependencies": {
-            "ws": "^8.17.0"
-          }
-        }
-        ```
-    2.  Open a terminal in the project directory and run:
-        ```bash
-        npm install
-        ```
--   **Running the Server**:
+1.  **Create `package.json`**: In the project's root directory, create a file named `package.json` with this content:
+    ```json
+    {
+      "name": "gemini-type-racer-server",
+      "version": "1.0.0",
+      "description": "Backend for Gemini Type Racer",
+      "main": "server.js",
+      "scripts": {
+        "start": "node server.js"
+      },
+      "dependencies": {
+        "ws": "^8.17.0"
+      }
+    }
+    ```
+
+2.  **Install Dependencies**: Open a terminal in the project directory and run:
+    ```bash
+    npm install
+    ```
+
+3.  **Start the Server**:
     ```bash
     npm start
     ```
-    You should see the message `Gemini Type Racer WebSocket server started on port 8080...` in your terminal. **Keep this terminal window open while you use the app.**
+    You should see the message `Gemini Type Racer WebSocket server started on port 8080...`. Keep this terminal window open.
+
+### Step 2: Running the Frontend
+
+The frontend is a modern, build-less application. To run it locally, you need to configure your API key and use a simple local web server.
+
+1.  **Configure the Gemini API Key**:
+    -   Open the file `services/geminiService.ts`.
+    -   Find this line at the top: `const API_KEY = process.env.API_KEY;`
+    -   For local development, you'll need to replace it with your actual key, like this:
+        ```javascript
+        const API_KEY = "YOUR_GEMINI_API_KEY_HERE";
+        ```
+    -   **IMPORTANT**: Be careful not to commit this change to a public Git repository.
+
+2.  **Serve the Frontend Files**:
+    -   Open a **new** terminal window in the same project directory.
+    -   Run the following command to start a simple web server:
+        ```bash
+        npx serve
+        ```
+    -   This command will give you a local URL, typically `http://localhost:3000`. Open this URL in your web browser.
+
+You should now have the backend running in one terminal and the frontend being served from another. The application will be fully functional.
 
 ---
 
@@ -106,6 +124,5 @@ If you see a "Connection to server failed" message or errors in the console rela
 
 **Solution:**
 1.  Open a terminal in the project's root directory.
-2.  Run the command `node server.js` (or `npm start` if you created the `package.json`).
-3.  You should see the message `Gemini Type Racer WebSocket server started on port 8080...`.
-4.  Keep this terminal open and refresh the application.
+2.  Follow the instructions in **Step 1: Running the Backend Server**.
+3.  Keep the backend terminal open and refresh the application.
