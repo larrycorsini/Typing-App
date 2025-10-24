@@ -1,7 +1,7 @@
 
 # Gemini Type Racer
 
-Welcome to Gemini Type Racer, a modern, feature-rich typing game where you can test your speed and accuracy against dynamic AI opponents, race against your own best performance, and compete in simulated live multiplayer lobbies. The typing passages are generated on-the-fly by Google's Gemini API, providing a unique challenge every time.
+Welcome to Gemini Type Racer, a modern, feature-rich typing game where you can test your speed and accuracy against dynamic AI opponents, race against your own best performance, compete in simulated live multiplayer lobbies, or challenge friends locally. The typing passages are generated on-the-fly by Google's Gemini API, providing a unique challenge every time.
 
 ![Gemini Type Racer Gameplay](https://storage.googleapis.com/aistudio-hosting/generative-ai-studio/assets/gemini-type-racer-screenshot.png)
 
@@ -12,6 +12,7 @@ Welcome to Gemini Type Racer, a modern, feature-rich typing game where you can t
 - **Dynamic Content via Gemini API**: Never type the same thing twice! Choose from various themes, and the Gemini API will generate a unique paragraph for you to race with.
 - **Multiple Game Modes**:
     - **Solo Race**: Compete against AI bots with Easy, Medium, or Hard difficulty settings.
+    - **Party Race**: A local multiplayer mode! Add up to 4 players to take turns typing the same passage on the same device to see who is the fastest.
     - **Public Race**: Simulate a race against a larger lobby of AI opponents with a wide range of skills.
     - **Ghost Race**: Race against a recording of your own personal best performance to visualize your improvement.
     - **Live Race**: Join a simulated real-time lobby where players join before a synchronized race begins, mimicking a true online multiplayer experience.
@@ -23,6 +24,16 @@ Welcome to Gemini Type Racer, a modern, feature-rich typing game where you can t
 - **Local & Global Leaderboards**: See how your best races stack up against your personal top scores or compare them against a simulated global leaderboard of elite typists.
 - **Immersive Audio**: Procedural sound effects, generated with the Web Audio API, provide lightweight, satisfying feedback for keystrokes and game events.
 - **Fully Accessible**: Designed with accessibility in mind, featuring full keyboard navigation, ARIA attributes for screen readers, and focus trapping in all modal dialogs.
+
+---
+
+## 🚀 How to Run the App
+
+This project is set up in a build-free development environment. There are no command-line tools or installation steps required.
+
+1.  **Live Preview**: The development environment provides a live preview of the application.
+2.  **Automatic Updates**: Any changes made to the code are automatically compiled and updated in the preview panel in real-time.
+3.  **Testing**: To test the application, simply interact with the live preview as a user would. All features are available for testing directly in the browser.
 
 ---
 
@@ -38,7 +49,7 @@ Welcome to Gemini Type Racer, a modern, feature-rich typing game where you can t
 
 ---
 
-## 🚀 Architectural Overview
+## 🏗️ Architectural Overview
 
 This project is built with a modern frontend architecture focused on scalability, maintainability, and separation of concerns.
 

@@ -1,10 +1,10 @@
+
 /**
  * @jest-environment jsdom
  */
 
 // This file demonstrates how unit tests could be structured for this project.
 // To run this, a testing framework like Jest would need to be set up.
-// FIX: Import Jest globals to resolve TypeScript errors.
 import { describe, it, expect, beforeEach, beforeAll, jest } from '@jest/globals';
 import { checkAndUnlockAchievements } from './services/achievementService';
 import { addLeaderboardEntry, getLeaderboard } from './services/leaderboardService';

@@ -1,5 +1,5 @@
+
 import { useState, useEffect, useCallback, useRef } from 'react';
-// FIX: Import TypingStats from types.ts as it is used in multiple places.
 import { TypingStats, WpmDataPoint } from '../types';
 import { soundService } from '../services/soundService';
 
@@ -86,7 +86,6 @@ export const useTypingGame = (textToType: string, isGameActive: boolean) => {
       if (newErrors.has(typed.length - 1)) {
         newErrors.delete(typed.length - 1);
       } else {
-        // FIX: Corrected typo from `correctCharsref` to `correctCharsRef`.
         correctCharsRef.current = Math.max(0, correctCharsRef.current -1);
       }
       setErrors(newErrors);

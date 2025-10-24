@@ -1,6 +1,6 @@
+
 import React from 'react';
 import { useStore } from '../store';
-// FIX: Import GameState to use its enum members.
 import { GameState } from '../types';
 
 const Lobby: React.FC = () => {
@@ -26,7 +26,6 @@ const Lobby: React.FC = () => {
             </div>
 
             <button
-                // FIX: Use GameState.LOBBY enum instead of string.
                 onClick={() => setGameState(GameState.LOBBY)}
                 className="w-full bg-red-600/80 text-white font-bold py-3 px-6 rounded-lg text-lg hover:bg-red-500/80 focus:outline-none focus:ring-4 focus:ring-red-400/50 transition-colors"
             >

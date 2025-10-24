@@ -1,3 +1,4 @@
+
 import React, { useState, FormEvent } from 'react';
 import { useStore } from '../store';
 import { GameState } from '../types';
@@ -50,7 +51,6 @@ const PartySetup: React.FC = () => {
             
             <div className="flex gap-4">
                 <button
-                    // FIX: Use GameState.LOBBY enum member instead of a string literal.
                     onClick={() => setGameState(GameState.LOBBY)}
                     className="w-1/3 bg-slate-600/80 text-white font-bold py-3 px-6 rounded-lg text-lg hover:bg-slate-500/80 focus:outline-none focus:ring-4 focus:ring-slate-400/50 transition-colors"
                 >
