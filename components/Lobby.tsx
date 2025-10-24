@@ -4,13 +4,14 @@ import { useStore } from '../store';
 import { GameState } from '../types';
 
 const Lobby: React.FC = () => {
-    const { players, lobbyCountdown, raceTheme, setGameState } = useStore();
+    // FIX: Changed `lobbyCountdown` to `onlineCountdown` to match the property in the store state.
+    const { players, onlineCountdown, raceTheme, setGameState } = useStore();
     const themeName = raceTheme?.replace(/_/g, ' ') || 'Unknown Theme';
 
     return (
         <div className="text-center w-full max-w-2xl bg-slate-800 p-8 rounded-xl shadow-2xl border border-slate-700">
             <h2 className="text-4xl font-bold text-cyan-400">Live Race Lobby</h2>
-            <p className="text-slate-400 mt-2 mb-6">Waiting for players... Race starts in <span className="font-bold text-white">{lobbyCountdown}</span></p>
+            <p className="text-slate-400 mt-2 mb-6">Waiting for players... Race starts in <span className="font-bold text-white">{onlineCountdown}</span></p>
             
             <div className="mb-4 text-left">
                 <p><span className="font-bold text-slate-300">Theme:</span> {themeName}</p>

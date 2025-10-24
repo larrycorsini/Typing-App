@@ -1,10 +1,10 @@
-import { Achievement, AchievementId, PlayerStats, RaceTheme, CustomizationTheme } from '../types';
+import { Achievement, AchievementId, PlayerStats, RaceTheme, RaceMode } from '../types';
 
 const ACHIEVEMENTS_STORAGE_KEY = 'gemini-type-racer-achievements';
 
 const allAchievements: Omit<Achievement, 'unlocked'>[] = [
     { id: 'FIRST_RACE', name: 'Off the Starting Blocks', description: 'Complete your first race.' },
-    { id: 'FIRST_WIN', name: 'Victory Lap', description: 'Win your first race.' },
+    { id: 'FIRST_WIN', name: 'Victory Lap', description: 'Win your first solo or public race.' },
     { 
       id: 'WPM_100', 
       name: 'Need for Speed', 
@@ -13,6 +13,15 @@ const allAchievements: Omit<Achievement, 'unlocked'>[] = [
     },
     { id: 'PERFECT_ACCURACY', name: 'Flawless Victory', description: 'Finish a race with 100% accuracy.' },
     { id: 'ALL_THEMES', name: 'Globetrotter', description: 'Complete a race in every theme.' },
+    { id: 'ENDURANCE_MASTER', name: 'Stamina King', description: 'Complete an Endurance mode race.' },
+    { id: 'DIY_RACER', name: 'So... Meta', description: 'Complete a race using your own custom text.' },
+    { id: 'DAILY_RACER', name: 'Consistency is Key', description: 'Complete the Daily Challenge.'},
+    { 
+        id: 'SOUND_MAESTRO', 
+        name: 'Sound Maestro', 
+        description: 'Finish a race with 120+ WPM and 99%+ accuracy.',
+        reward: { type: 'soundPack', id: 'mechanical' }
+    }
 ];
 
 export const getAchievements = (): Achievement[] => {
@@ -42,7 +51,8 @@ interface RaceResultForAchievements {
     wpm: number;
     accuracy: number;
     rank: number;
-    theme: RaceTheme;
+    theme: RaceTheme | null;
+    mode: RaceMode;
     stats: PlayerStats;
 }
 
@@ -56,7 +66,8 @@ const getPlayedThemes = (): RaceTheme[] => {
     }
 }
 
-const addPlayedTheme = (theme: RaceTheme) => {
+const addPlayedTheme = (theme: RaceTheme | null) => {
+    if (!theme) return;
     try {
         const themes = new Set(getPlayedThemes());
         themes.add(theme);
@@ -82,11 +93,17 @@ export const checkAndUnlockAchievements = (result: RaceResultForAchievements): A
         }
     };
 
-    check('FIRST_RACE', true); // This is checked after every race, so if it's not unlocked, it will be.
-    check('FIRST_WIN', result.rank === 1);
+    check('FIRST_RACE', true);
+    check('FIRST_WIN', result.rank === 1 && (result.mode.startsWith('SOLO') || result.mode === 'PUBLIC'));
     check('WPM_100', result.wpm >= 100);
     check('PERFECT_ACCURACY', result.accuracy === 100);
     check('ALL_THEMES', Object.values(RaceTheme).every(theme => playedThemes.includes(theme)));
+
+    check('ENDURANCE_MASTER', result.mode === RaceMode.ENDURANCE);
+    check('DIY_RACER', result.mode === RaceMode.CUSTOM_TEXT);
+    check('DAILY_RACER', result.mode === RaceMode.DAILY_CHALLENGE);
+    check('SOUND_MAESTRO', result.wpm >= 120 && result.accuracy >= 99);
+
 
     if (newlyUnlocked.length > 0) {
         saveAchievements(currentAchievements);

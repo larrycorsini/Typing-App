@@ -4,7 +4,6 @@ import { GameState, RaceMode, RaceTheme } from './types';
 import { useStore } from './store';
 
 import TypingArea from './components/TypingArea';
-import StatsDisplay from './components/StatsDisplay';
 import PlayerCard from './components/PlayerCard';
 import Countdown from './components/Countdown';
 import ResultsModal from './components/ResultsModal';
@@ -13,10 +12,11 @@ import PlayerStatsModal from './components/PlayerStatsModal';
 import LeaderboardModal from './components/LeaderboardModal';
 import AchievementsModal from './components/AchievementsModal';
 import ToastContainer from './components/Toast';
-import Lobby from './components/Lobby';
 import SettingsModal from './components/SettingsModal';
 import PartySetup from './components/PartySetup';
 import PartyTransition from './components/PartyTransition';
+import OnlineLobby from './components/OnlineLobby';
+import CustomTextSetup from './components/CustomTextSetup';
 
 const App: React.FC = () => {
   const state = useStore();
@@ -48,41 +48,48 @@ const App: React.FC = () => {
         <h1 className="text-5xl md:text-6xl font-bold text-[rgb(var(--color-accent-primary))] order-first w-full text-center sm:order-none sm:w-auto">Welcome, {state.playerName}!</h1>
         <div className="w-[360px]">{/* Placeholder for alignment */}</div>
       </div>
-      <p className="text-[rgb(var(--color-text-secondary))] mt-2 mb-6">Select a theme and mode, then start the race.</p>
+      <p className="text-[rgb(var(--color-text-secondary))] mt-2 mb-6">Select a mode and theme, then start the race.</p>
       
       <div className="mb-6">
-        <h3 className="text-xl text-[rgb(var(--color-text-primary))] font-bold mb-3" id="theme-label">Theme</h3>
-        <div role="group" aria-labelledby="theme-label" className="flex flex-wrap justify-center gap-2 md:gap-4">
-          {(Object.keys(RaceTheme) as Array<keyof typeof RaceTheme>).map(key => (
-            <button key={key} onClick={() => state.setRaceTheme(RaceTheme[key])} className={`font-bold py-2 px-4 rounded-lg text-md transition-all duration-200 border-2 ${state.raceTheme === RaceTheme[key] ? 'bg-[rgb(var(--color-accent-secondary))] border-[rgb(var(--color-accent-secondary))] text-[rgb(var(--color-accent-text))]' : 'border-[rgb(var(--color-border))] text-[rgb(var(--color-text-primary))] hover:bg-[rgb(var(--color-bg-secondary))] hover:border-slate-500'}`}>
-              {key.replace(/_/g, ' ')}
-            </button>
-          ))}
+        <h3 className="text-xl text-[rgb(var(--color-text-primary))] font-bold mb-3" id="mode-label">Game Mode</h3>
+        <div className="flex flex-wrap justify-center gap-3">
+            <button onClick={() => state.setRaceMode(RaceMode.SOLO_EASY)} className={`font-bold py-2 px-5 rounded-lg text-lg transition-colors border-2 ${state.raceMode === RaceMode.SOLO_EASY ? 'bg-green-500 border-green-500 text-white' : 'border-[rgb(var(--color-border))] hover:bg-slate-700'}`}>Solo Easy</button>
+            <button onClick={() => state.setRaceMode(RaceMode.SOLO_MEDIUM)} className={`font-bold py-2 px-5 rounded-lg text-lg transition-colors border-2 ${state.raceMode === RaceMode.SOLO_MEDIUM ? 'bg-yellow-500 border-yellow-500 text-white' : 'border-[rgb(var(--color-border))] hover:bg-slate-700'}`}>Solo Medium</button>
+            <button onClick={() => state.setRaceMode(RaceMode.SOLO_HARD)} className={`font-bold py-2 px-5 rounded-lg text-lg transition-colors border-2 ${state.raceMode === RaceMode.SOLO_HARD ? 'bg-red-500 border-red-500 text-white' : 'border-[rgb(var(--color-border))] hover:bg-slate-700'}`}>Solo Hard</button>
+            <button onClick={() => state.setRaceMode(RaceMode.ONLINE_RACE)} className={`font-bold py-2 px-5 rounded-lg text-lg transition-colors border-2 ${state.raceMode === RaceMode.ONLINE_RACE ? 'bg-sky-500 border-sky-500 text-white' : 'border-[rgb(var(--color-border))] hover:bg-slate-700'}`}>Online Race</button>
+            <button onClick={() => state.setRaceMode(RaceMode.GHOST)} disabled={!isGhostAvailable} className={`font-bold py-2 px-5 rounded-lg text-lg transition-colors border-2 ${state.raceMode === RaceMode.GHOST ? 'bg-purple-500 border-purple-500 text-white' : 'border-[rgb(var(--color-border))] hover:bg-slate-700'} disabled:opacity-50`}>Vs Ghost</button>
+            <button onClick={() => state.setRaceMode(RaceMode.PARTY)} className={`font-bold py-2 px-5 rounded-lg text-lg transition-colors border-2 ${state.raceMode === RaceMode.PARTY ? 'bg-pink-500 border-pink-500 text-white' : 'border-[rgb(var(--color-border))] hover:bg-slate-700'}`}>Party Race</button>
         </div>
       </div>
 
-      <div className="mb-8">
-          <h3 className="text-xl text-[rgb(var(--color-text-primary))] font-bold mb-3" id="mode-label">Race Mode</h3>
-          <div role="group" aria-labelledby="mode-label" className="flex flex-wrap justify-center gap-4">
-            {(Object.keys(RaceMode) as Array<keyof typeof RaceMode>).map(key => {
-              const isGhost = RaceMode[key] === RaceMode.GHOST;
-              const modeName = key.replace(/SOLO_/g, '').replace(/_/g, ' ');
-              if (isGhost && !isGhostAvailable) return null;
-              
-              return (
-              <button key={key} onClick={() => state.setRaceMode(RaceMode[key])} disabled={isGhost && !isGhostAvailable} className={`font-bold py-2 px-6 rounded-lg text-lg transition-all duration-200 border-2 ${state.raceMode === RaceMode[key] ? 'bg-[rgb(var(--color-accent-secondary))] border-[rgb(var(--color-accent-secondary))] text-[rgb(var(--color-accent-text))]' : 'border-[rgb(var(--color-border))] text-[rgb(var(--color-text-primary))] hover:bg-[rgb(var(--color-bg-secondary))] hover:border-slate-500'} disabled:opacity-50 disabled:cursor-not-allowed`}>
-                {isGhost ? 'Vs Ghost' : modeName}
-              </button>
-            )})}
-          </div>
+       <div className="mb-8">
+        <h3 className="text-xl text-[rgb(var(--color-text-primary))] font-bold mb-3" id="practice-label">Practice & Challenges</h3>
+        <div className="flex flex-wrap justify-center gap-3">
+            <button onClick={() => state.setRaceMode(RaceMode.ENDURANCE)} className={`font-bold py-2 px-5 rounded-lg text-lg transition-colors border-2 ${state.raceMode === RaceMode.ENDURANCE ? 'bg-indigo-500 border-indigo-500 text-white' : 'border-[rgb(var(--color-border))] hover:bg-slate-700'}`}>Endurance (60s)</button>
+            <button onClick={() => state.setRaceMode(RaceMode.CUSTOM_TEXT)} className={`font-bold py-2 px-5 rounded-lg text-lg transition-colors border-2 ${state.raceMode === RaceMode.CUSTOM_TEXT ? 'bg-teal-500 border-teal-500 text-white' : 'border-[rgb(var(--color-border))] hover:bg-slate-700'}`}>Custom Text</button>
+            <button onClick={() => state.setRaceMode(RaceMode.DAILY_CHALLENGE)} className={`font-bold py-2 px-5 rounded-lg text-lg transition-colors border-2 ${state.raceMode === RaceMode.DAILY_CHALLENGE ? 'bg-amber-500 border-amber-500 text-white' : 'border-[rgb(var(--color-border))] hover:bg-slate-700'}`}>Daily Challenge</button>
+        </div>
       </div>
+      
+      {state.raceMode && state.raceMode.startsWith('SOLO') && (
+         <div className="mb-6">
+            <h3 className="text-xl text-[rgb(var(--color-text-primary))] font-bold mb-3" id="theme-label">Theme</h3>
+            <div role="group" aria-labelledby="theme-label" className="flex flex-wrap justify-center gap-2 md:gap-4">
+              {(Object.keys(RaceTheme) as Array<keyof typeof RaceTheme>).map(key => (
+                <button key={key} onClick={() => state.setRaceTheme(RaceTheme[key])} className={`font-bold py-2 px-4 rounded-lg text-md transition-all duration-200 border-2 ${state.raceTheme === RaceTheme[key] ? 'bg-[rgb(var(--color-accent-secondary))] border-[rgb(var(--color-accent-secondary))] text-[rgb(var(--color-accent-text))]' : 'border-[rgb(var(--color-border))] text-[rgb(var(--color-text-primary))] hover:bg-[rgb(var(--color-bg-secondary))] hover:border-slate-500'}`}>
+                  {key.replace(/_/g, ' ')}
+                </button>
+              ))}
+            </div>
+        </div>
+      )}
 
       <div className="bg-[rgb(var(--color-bg-secondary))] p-6 rounded-lg shadow-lg text-xl md:text-2xl leading-relaxed tracking-wider select-none font-medium mb-8 min-h-[10rem] flex items-center justify-center transition-opacity duration-300">
         <p className={`${!state.textToType || state.textToType.startsWith('Loading') ? 'animate-pulse text-[rgb(var(--color-text-secondary))]' : ''}`}>
-          {state.textToType || 'Select a theme and mode to generate a passage...'}
+          {state.textToType || 'Select a mode to generate a passage...'}
         </p>
       </div>
-      <button onClick={state.startGame} disabled={!state.raceMode || !state.raceTheme || state.textToType.startsWith('Loading') || state.raceMode === RaceMode.LIVE_RACE || state.raceMode === RaceMode.PARTY} className="bg-[rgb(var(--color-accent-secondary))] text-[rgb(var(--color-accent-text))] font-bold py-4 px-8 rounded-lg text-2xl hover:bg-[rgb(var(--color-accent-primary))] focus:outline-none focus:ring-4 focus:ring-[rgba(var(--color-accent-primary),0.5)] transition-all duration-300 disabled:bg-slate-600 disabled:cursor-not-allowed transform hover:scale-105">
+      <button onClick={state.startGame} disabled={!state.raceMode || (state.raceMode.startsWith('SOLO') && !state.raceTheme) || state.textToType.startsWith('Loading')} className="bg-[rgb(var(--color-accent-secondary))] text-[rgb(var(--color-accent-text))] font-bold py-4 px-8 rounded-lg text-2xl hover:bg-[rgb(var(--color-accent-primary))] focus:outline-none focus:ring-4 focus:ring-[rgba(var(--color-accent-primary),0.5)] transition-all duration-300 disabled:bg-slate-600 disabled:cursor-not-allowed transform hover:scale-105">
         Start Race
       </button>
     </div>
@@ -98,7 +105,6 @@ const App: React.FC = () => {
         {state.players.map(p => <PlayerCard key={p.id} player={p} />)}
       </div>
       <TypingArea textToType={state.textToType} typed={state.typed} errors={state.errors} />
-      {state.raceMode !== RaceMode.PARTY && <StatsDisplay stats={state.playerStats} />}
     </>
   );
 
@@ -106,9 +112,10 @@ const App: React.FC = () => {
     switch(state.gameState) {
       case GameState.NAME_SELECTION: return <NameSelection onNameSubmit={state.setPlayerName} />;
       case GameState.LOBBY: return renderLobby();
-      case GameState.LIVE_RACE_LOBBY: return <Lobby />;
+      case GameState.ONLINE_LOBBY: return <OnlineLobby />;
       case GameState.PARTY_SETUP: return <PartySetup />;
       case GameState.PARTY_TRANSITION: return <PartyTransition />;
+      case GameState.CUSTOM_TEXT_SETUP: return <CustomTextSetup />;
       case GameState.TYPING: case GameState.COUNTDOWN: return renderGame();
       default: return null;
     }

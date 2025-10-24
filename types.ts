@@ -1,12 +1,14 @@
+
 export enum GameState {
   NAME_SELECTION = 'NAME_SELECTION',
   LOBBY = 'LOBBY',
-  LIVE_RACE_LOBBY = 'LIVE_RACE_LOBBY',
   COUNTDOWN = 'COUNTDOWN',
   TYPING = 'TYPING',
   RESULTS = 'RESULTS',
   PARTY_SETUP = 'PARTY_SETUP',
   PARTY_TRANSITION = 'PARTY_TRANSITION',
+  ONLINE_LOBBY = 'ONLINE_LOBBY',
+  CUSTOM_TEXT_SETUP = 'CUSTOM_TEXT_SETUP',
 }
 
 export enum RaceMode {
@@ -14,9 +16,12 @@ export enum RaceMode {
   SOLO_MEDIUM = 'SOLO_MEDIUM',
   SOLO_HARD = 'SOLO_HARD',
   GHOST = 'GHOST',
-  PUBLIC = 'PUBLIC',
-  LIVE_RACE = 'LIVE_RACE',
+  PUBLIC = 'PUBLIC', // Kept for bot simulation, but less prominent
   PARTY = 'PARTY',
+  ONLINE_RACE = 'ONLINE_RACE',
+  ENDURANCE = 'ENDURANCE',
+  CUSTOM_TEXT = 'CUSTOM_TEXT',
+  DAILY_CHALLENGE = 'DAILY_CHALLENGE',
 }
 
 export enum RaceTheme {
@@ -69,19 +74,26 @@ export interface GhostData {
   textLength: number;
 }
 
-export type AchievementId = 'FIRST_RACE' | 'FIRST_WIN' | 'WPM_100' | 'PERFECT_ACCURACY' | 'ALL_THEMES';
+export type AchievementId = 'FIRST_RACE' | 'FIRST_WIN' | 'WPM_100' | 'PERFECT_ACCURACY' | 'ALL_THEMES' | 'ENDURANCE_MASTER' | 'DIY_RACER' | 'DAILY_RACER' | 'SOUND_MAESTRO';
 
 export interface CustomizationTheme {
     id: 'default' | 'fiery';
     name: string;
 }
 
+export interface CustomizationSoundPack {
+    id: 'classic' | 'scifi' | 'mechanical';
+    name: string;
+}
+
 export interface PlayerSettings {
     activeThemeId: CustomizationTheme['id'];
+    activeSoundPackId: CustomizationSoundPack['id'];
 }
 
 export interface UnlockedCustomizations {
     themes: CustomizationTheme['id'][];
+    soundPacks: CustomizationSoundPack['id'][];
 }
 
 export interface Achievement {
@@ -89,10 +101,10 @@ export interface Achievement {
   name: string;
   description: string;
   unlocked: boolean;
-  reward?: {
-    type: 'theme';
-    id: CustomizationTheme['id'];
-  }
+  // FIX: Converted `reward` to a discriminated union to allow for correct type narrowing.
+  reward?:
+    | { type: 'theme'; id: CustomizationTheme['id'] }
+    | { type: 'soundPack'; id: CustomizationSoundPack['id'] };
 }
 
 export interface LeaderboardEntry {
@@ -112,4 +124,35 @@ export interface TypingStats {
   wpm: number;
   accuracy: number;
   progress: number;
+  mistypedChars: Record<string, number>;
 }
+
+
+// WebSocket Types
+export interface RoomInfo {
+    id: string;
+    playerCount: number;
+    state: 'waiting' | 'countdown' | 'racing';
+    players: { id: string, name: string }[];
+}
+
+export type ClientToServerMessage =
+  | { type: 'getRoomList' }
+  | { type: 'createRoom'; playerName: string }
+  | { type: 'joinRoom'; roomId: string; playerName: string }
+  | { type: 'progressUpdate'; progress: number; wpm: number }
+  | { type: 'raceFinished'; wpm: number; accuracy: number }
+  | { type: 'getDailyChallenge' };
+
+export type ServerToClientMessage =
+  | { type: 'roomList'; rooms: RoomInfo[] }
+  | { type: 'roomCreated'; roomId: string }
+  | { type: 'joinedRoom'; room: RoomInfo }
+  | { type: 'playerJoined'; player: { id: string; name: string } }
+  | { type: 'playerLeft'; playerId: string }
+  | { type: 'raceStarting'; countdown: number }
+  | { type: 'raceStart' }
+  | { type: 'progressUpdate'; playerId: string; progress: number; wpm: number }
+  | { type: 'playerFinished'; playerId: string; wpm: number; accuracy: number; rank?: number }
+  | { type: 'dailyChallenge'; text: string }
+  | { type: 'error'; message: string };

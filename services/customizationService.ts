@@ -1,4 +1,4 @@
-import { CustomizationTheme, PlayerSettings, UnlockedCustomizations } from '../types';
+import { CustomizationTheme, PlayerSettings, UnlockedCustomizations, CustomizationSoundPack } from '../types';
 
 const UNLOCKED_CUSTOMIZATIONS_KEY = 'gemini-type-racer-unlocked-customizations';
 const PLAYER_SETTINGS_KEY = 'gemini-type-racer-player-settings';
@@ -8,23 +8,46 @@ export const allThemes: CustomizationTheme[] = [
     { id: 'fiery', name: 'Fiery Orange' },
 ];
 
+export const allSoundPacks: CustomizationSoundPack[] = [
+    { id: 'classic', name: 'Classic' },
+    { id: 'scifi', name: 'Sci-Fi' },
+    { id: 'mechanical', name: 'Mechanical' },
+];
+
+const getDefaults = (): { customizations: UnlockedCustomizations, settings: PlayerSettings } => ({
+    customizations: {
+        themes: ['default'],
+        soundPacks: ['classic', 'scifi'], // Give scifi for free
+    },
+    settings: {
+        activeThemeId: 'default',
+        activeSoundPackId: 'classic',
+    }
+});
+
 export const customizationService = {
     getUnlocked: (): UnlockedCustomizations => {
         try {
             const stored = localStorage.getItem(UNLOCKED_CUSTOMIZATIONS_KEY);
-            const defaults: UnlockedCustomizations = { themes: ['default'] };
+            const defaults = getDefaults().customizations;
             return stored ? { ...defaults, ...JSON.parse(stored) } : defaults;
         } catch (e) {
-            return { themes: ['default'] };
+            return getDefaults().customizations;
         }
     },
 
     unlockTheme: (themeId: CustomizationTheme['id']): boolean => {
         const unlocked = customizationService.getUnlocked();
-        if (unlocked.themes.includes(themeId)) {
-            return false; // Already unlocked
-        }
+        if (unlocked.themes.includes(themeId)) return false;
         unlocked.themes.push(themeId);
+        localStorage.setItem(UNLOCKED_CUSTOMIZATIONS_KEY, JSON.stringify(unlocked));
+        return true;
+    },
+
+    unlockSoundPack: (packId: CustomizationSoundPack['id']): boolean => {
+        const unlocked = customizationService.getUnlocked();
+        if (unlocked.soundPacks.includes(packId)) return false;
+        unlocked.soundPacks.push(packId);
         localStorage.setItem(UNLOCKED_CUSTOMIZATIONS_KEY, JSON.stringify(unlocked));
         return true;
     },
@@ -32,10 +55,10 @@ export const customizationService = {
     getPlayerSettings: (): PlayerSettings => {
         try {
             const stored = localStorage.getItem(PLAYER_SETTINGS_KEY);
-            const defaults: PlayerSettings = { activeThemeId: 'default' };
+            const defaults = getDefaults().settings;
             return stored ? { ...defaults, ...JSON.parse(stored) } : defaults;
         } catch (e) {
-            return { activeThemeId: 'default' };
+            return getDefaults().settings;
         }
     },
     

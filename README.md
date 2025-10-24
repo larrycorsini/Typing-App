@@ -1,7 +1,7 @@
 
 # Gemini Type Racer
 
-Welcome to Gemini Type Racer, a modern, feature-rich typing game where you can test your speed and accuracy against dynamic AI opponents, race against your own best performance, compete in simulated live multiplayer lobbies, or challenge friends locally. The typing passages are generated on-the-fly by Google's Gemini API, providing a unique challenge every time.
+Welcome to Gemini Type Racer, a modern, feature-rich typing game where you can test your speed and accuracy against dynamic AI opponents, race against your own best performance, compete in **real-time online multiplayer**, or challenge friends in local "hotseat" mode. The typing passages are generated on-the-fly by Google's Gemini API, providing a unique challenge every time.
 
 ![Gemini Type Racer Gameplay](https://storage.googleapis.com/aistudio-hosting/generative-ai-studio/assets/gemini-type-racer-screenshot.png)
 
@@ -9,74 +9,89 @@ Welcome to Gemini Type Racer, a modern, feature-rich typing game where you can t
 
 ## ✨ Features
 
-- **Dynamic Content via Gemini API**: Never type the same thing twice! Choose from various themes, and the Gemini API will generate a unique paragraph for you to race with.
-- **Multiple Game Modes**:
+- **Real-Time Online Multiplayer**: Join a public lobby, create a room, and race against players from around the world. Your progress is updated character-by-character for a thrilling, competitive experience.
+- **Dynamic Content via Gemini API**: Never type the same thing twice! Choose from various themes, and the Gemini API will generate a unique paragraph for you.
+- **Multiple Game & Practice Modes**:
     - **Solo Race**: Compete against AI bots with Easy, Medium, or Hard difficulty settings.
-    - **Party Race**: A local multiplayer mode! Add up to 4 players to take turns typing the same passage on the same device to see who is the fastest.
-    - **Public Race**: Simulate a race against a larger lobby of AI opponents with a wide range of skills.
+    - **Party Race**: A local "hotseat" multiplayer mode! Add up to 4 players to take turns typing the same passage on the same device.
     - **Ghost Race**: Race against a recording of your own personal best performance to visualize your improvement.
-    - **Live Race**: Join a simulated real-time lobby where players join before a synchronized race begins, mimicking a true online multiplayer experience.
-- **Player Customization**: Unlock cosmetic UI themes by earning achievements and equip them in the settings panel to personalize your game.
-- **Themed Content Packs**: Select your favorite theme for a customized typing experience, including Harry Potter, Famous Movie Quotes, Song Lyrics, and JavaScript Code Snippets.
+    - **Endurance Mode**: Test your stamina. Type as many words as you can in 60 seconds from an endless stream.
+    - **Custom Text Mode**: Paste in your own text to practice with anything you want.
+    - **Daily Challenge**: Compete on a unique, daily paragraph that is the same for everyone, with its own leaderboard.
+- **Player Customization**:
+    - **UI Themes**: Unlock cosmetic UI themes by earning achievements.
+    - **Sound Packs**: Unlock and equip different typing sound profiles (Classic, Sci-Fi, Mechanical) for a personalized audio experience.
+- **Advanced Race Analysis**: Get actionable feedback after each race with an analysis of your most frequently mistyped characters.
 - **Persistent Player Stats**: Your performance is saved locally. Track your total races, wins, win rate, best WPM, and average WPM/accuracy over time.
-- **Post-Race WPM Chart**: Visualize your typing speed throughout the race with a clean, SVG-based line graph.
-- **Achievements & Milestones**: Unlock achievements for reaching milestones like your first win, achieving 100 WPM, or finishing with perfect accuracy. Unlocking certain achievements grants cosmetic rewards.
-- **Local & Global Leaderboards**: See how your best races stack up against your personal top scores or compare them against a simulated global leaderboard of elite typists.
-- **Immersive Audio**: Procedural sound effects, generated with the Web Audio API, provide lightweight, satisfying feedback for keystrokes and game events.
-- **Fully Accessible**: Designed with accessibility in mind, featuring full keyboard navigation, ARIA attributes for screen readers, and focus trapping in all modal dialogs.
+- **Achievements & Leaderboards**: Unlock achievements for reaching milestones. See how your best races stack up against your personal top scores or a simulated global leaderboard.
+- **Fully Accessible**: Designed with accessibility in mind, featuring full keyboard navigation, ARIA attributes, and focus trapping in all modal dialogs.
 
 ---
 
-## 🚀 How to Run the App
+## 🚀 How to Run the App (Frontend & Backend)
 
-This project is set up in a build-free development environment. There are no command-line tools or installation steps required.
+This project consists of a frontend (the React app) and a backend (a Node.js server for online features). You need to run both for all features to work.
 
-1.  **Live Preview**: The development environment provides a live preview of the application.
-2.  **Automatic Updates**: Any changes made to the code are automatically compiled and updated in the preview panel in real-time.
-3.  **Testing**: To test the application, simply interact with the live preview as a user would. All features are available for testing directly in the browser.
+### 1. Running the Frontend
+
+The frontend is set up in a build-free development environment. There are no command-line tools or installation steps required.
+
+-   **Live Preview**: Simply interact with the live preview panel.
+-   **Automatic Updates**: Any changes made to the code are automatically compiled and updated in the preview panel in real-time.
+
+### 2. Running the Backend Server
+
+The backend server powers the Online Multiplayer and Daily Challenge modes.
+
+-   **Prerequisites**: You need to have [Node.js](https://nodejs.org/) installed on your system.
+-   **Installation**:
+    1.  Create a `package.json` file in the root directory with the following content:
+        ```json
+        {
+          "name": "gemini-type-racer-server",
+          "version": "1.0.0",
+          "description": "",
+          "main": "server.js",
+          "scripts": {
+            "start": "node server.js"
+          },
+          "keywords": [],
+          "author": "",
+          "license": "ISC",
+          "dependencies": {
+            "ws": "^8.17.0"
+          }
+        }
+        ```
+    2.  Open a terminal in the project directory and run:
+        ```bash
+        npm install
+        ```
+-   **Running the Server**:
+    ```bash
+    npm start
+    ```
+    You should see the message `Gemini Type Racer WebSocket server started on port 8080...` in your terminal. **Keep this terminal window open while you use the app.**
 
 ---
 
 ## 🛠️ Tech Stack
 
-- **Framework**: React 19
-- **Language**: TypeScript
-- **State Management**: Zustand
-- **Styling**: Tailwind CSS (via CDN) & CSS Variables for theming
-- **Core API**: Google Gemini API (`@google/genai`)
-- **Testing**: Jest (via `@jest/globals`) for unit test structure
-- **Audio**: Web Audio API (for procedural sound effects)
+-   **Frontend**: React 19, TypeScript, Zustand, Tailwind CSS
+-   **Backend**: Node.js
+-   **Real-Time Communication**: WebSockets (`ws` library)
+-   **Core API**: Google Gemini API (`@google/genai`)
+-   **Audio**: Web Audio API
 
 ---
 
 ## 🏗️ Architectural Overview
 
-This project is built with a modern frontend architecture focused on scalability, maintainability, and separation of concerns.
+The application is architected for scalability and maintainability, with a clear separation between the frontend and backend.
 
-### Project Structure
-
--   `components/`: Reusable React components that make up the UI.
--   `services/`: Modules handling external interactions and business logic (e.g., `geminiService`, `achievementService`, `customizationService`).
--   `hooks/`: Custom React hooks for managing complex, reusable component logic (e.g., `useTypingGame`, `useFocusTrap`).
--   `store.ts`: The central Zustand store, acting as the single source of truth for all global application state.
--   `types.ts`: A centralized file for all TypeScript type definitions and interfaces.
--   `services.test.ts`: An example file demonstrating the unit testing pattern for the application's services.
-
-### Core Concepts
-
-#### State Management with Zustand
-
-The application's state is managed by a centralized **Zustand store** (`store.ts`). This avoids prop-drilling and provides a single, predictable source of truth.
-
--   **Actions**: State mutations are handled by clearly defined actions within the store, making state changes predictable.
--   **`AppStateSync` Component**: This bridge component synchronizes the state from the `useTypingGame` hook (which contains the core typing logic) with the global Zustand store and manages the main game loop (`setInterval`).
-
-#### Accessibility (a11y)
-
--   **Focus Trapping**: The `useFocusTrap` hook ensures that when a modal is open, keyboard focus is trapped within it. It also allows closing modals with the `Escape` key.
--   **Semantic HTML & ARIA**: Proper HTML5 elements and ARIA attributes (e.g., `role`, `aria-modal`, `aria-label`) provide context to assistive technologies.
--   **Keyboard Navigation**: All interactive elements are fully navigable and operable using only a keyboard.
-
-#### Unit Testing
-
-The project includes a `services.test.ts` file that establishes a foundation for unit testing using a Jest-like syntax. It includes a mock for `localStorage` to ensure tests are isolated and repeatable, demonstrating a commitment to code quality and reliability.
+-   **Frontend**: A single-page application built with React. Global state is managed by a centralized **Zustand store** (`store.ts`), providing a single source of truth. Logic is cleanly separated into components, services (for business logic like API calls), and hooks.
+-   **Backend (`server.js`)**: A lightweight Node.js server that uses the `ws` library to handle WebSocket connections. It is responsible for:
+    -   Managing online race rooms and player states.
+    -   Broadcasting player progress to everyone in a room in real-time.
+    -   Serving the daily challenge text to ensure consistency for all players.
+-   **Communication (`websocketService.ts`)**: A client-side service that acts as the bridge between the React app and the backend server, managing the WebSocket connection and message flow.

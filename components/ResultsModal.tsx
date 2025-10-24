@@ -1,5 +1,6 @@
 import React from 'react';
-import { Player, PartyPlayer } from '../types';
+// FIX: Imported RaceMode to correctly compare against race mode values.
+import { Player, PartyPlayer, TypingStats, RaceMode } from '../types';
 import WpmChart from './WpmChart';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useStore } from '../store';
@@ -9,13 +10,41 @@ interface ResultsModalProps {
   onPlayAgain: () => void;
 }
 
+const MistakeAnalysis: React.FC<{ mistypedChars: TypingStats['mistypedChars'] }> = ({ mistypedChars }) => {
+    const mistakes = Object.entries(mistypedChars)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 5);
+
+    if (mistakes.length === 0) {
+        return null;
+    }
+
+    return (
+        <div className="bg-slate-700/50 p-3 rounded-lg mt-4">
+            <h4 className="text-center text-sm text-slate-300 font-bold mb-2">Mistake Analysis</h4>
+            <div className="flex justify-center gap-4 text-center">
+                {mistakes.map(([char, count]) => (
+                    <div key={char}>
+                        <div className="font-mono text-2xl bg-red-900/50 text-red-300 rounded-md px-2 py-1">
+                            {char === ' ' ? '_' : char}
+                        </div>
+                        <div className="text-xs text-slate-400 mt-1">{count}x</div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
 const ResultsModal: React.FC<ResultsModalProps> = ({ players, onPlayAgain }) => {
   const trapRef = useFocusTrap<HTMLDivElement>(onPlayAgain);
-  const { partyPlayers, raceMode } = useStore(state => ({
+  const { partyPlayers, raceMode, playerStats } = useStore(state => ({
     partyPlayers: state.partyPlayers,
     raceMode: state.raceMode,
+    playerStats: state.playerStats,
   }));
-  const isPartyMode = raceMode === 'PARTY';
+  const isPartyMode = raceMode === RaceMode.PARTY;
+  const isOnlineMode = raceMode === RaceMode.ONLINE_RACE;
 
   const sortedResults: (Player | PartyPlayer)[] = isPartyMode
     ? [...partyPlayers].sort((a, b) => (a.rank ?? Infinity) - (b.rank ?? Infinity))
@@ -24,12 +53,19 @@ const ResultsModal: React.FC<ResultsModalProps> = ({ players, onPlayAgain }) => 
   const playerResult = players.find(p => p.isPlayer);
   const isWinner = playerResult?.rank === 1;
 
-  const title = isPartyMode 
-    ? `👑 ${sortedResults[0]?.name} Wins! 👑`
-    : (isWinner ? 'You Won!' : 'Race Finished!');
+  let title = 'Race Finished!';
+  if (isPartyMode) {
+    title = `👑 ${sortedResults[0]?.name} Wins! 👑`;
+  } else if (isOnlineMode) {
+    title = playerResult?.rank ? `You finished #${playerResult.rank}!` : 'Race Finished!';
+  } else if (isWinner) {
+    title = 'You Won!';
+  }
   
-  const subtitle = isPartyMode 
+  let subtitle = isPartyMode 
     ? "Here are the final standings." 
+    : isOnlineMode 
+    ? `You typed at ${playerStats.wpm} WPM.`
     : `You placed #${playerResult?.rank || 'N/A'}`;
 
   return (
@@ -40,11 +76,11 @@ const ResultsModal: React.FC<ResultsModalProps> = ({ players, onPlayAgain }) => 
         </h2>
         <p className="text-center text-slate-300 text-xl mb-6">{subtitle}</p>
 
-        <div className="space-y-3 mb-6">
+        <div className="space-y-3 mb-6 max-h-60 overflow-y-auto pr-2">
           {sortedResults.map((p, index) => (
             <div key={p.name + index} className={`flex justify-between items-center p-3 rounded-lg transition-transform duration-300 ${(p as Player).isPlayer ? 'bg-cyan-900/50' : 'bg-slate-700/50'} ${(p as Player).isPlayer && isWinner ? 'scale-105 ring-2 ring-yellow-400 shadow-lg' : ''}`}>
-              <span className="font-semibold text-slate-200">
-                {p.rank === 1 ? '👑 ' : ''}#{p.rank} {p.name}
+              <span className="font-semibold text-slate-200 truncate pr-2">
+                {p.rank === 1 ? '👑 ' : ''}#{p.rank} {p.name} {(p as Player).isPlayer && '(You)'}
               </span>
               <span className="font-bold text-cyan-300">{p.wpm} WPM</span>
             </div>
@@ -52,12 +88,13 @@ const ResultsModal: React.FC<ResultsModalProps> = ({ players, onPlayAgain }) => 
         </div>
 
         {playerResult?.wpmHistory && !isPartyMode && <WpmChart data={playerResult.wpmHistory} />}
+        {playerStats.mistypedChars && !isPartyMode && <MistakeAnalysis mistypedChars={playerStats.mistypedChars} />}
 
         <button 
           onClick={onPlayAgain}
           className="w-full bg-cyan-500 text-slate-900 font-bold py-3 px-6 rounded-lg text-xl hover:bg-cyan-400 focus:outline-none focus:ring-4 focus:ring-cyan-300/50 transition-all duration-300 transform hover:scale-105 mt-8"
         >
-          {isPartyMode ? 'New Game' : 'Play Again'}
+          {isPartyMode ? 'New Game' : 'Back to Lobby'}
         </button>
       </div>
     </div>
