@@ -7,7 +7,7 @@ interface NameSelectionProps {
   onNameSubmit: (name: string) => void;
 }
 
-const LOGO_IMAGE = "/typeracer.jpg";
+const LOGO_IMAGE = "typeracer.jpg";
 
 const NameSelection: React.FC<NameSelectionProps> = ({ onNameSubmit }) => {
   const [name, setName] = useState('');

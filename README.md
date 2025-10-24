@@ -3,7 +3,7 @@
 
 Welcome to Gemini Type Racer, a modern, feature-rich typing game where you can test your speed and accuracy against dynamic AI opponents, race against your own best performance, compete in **real-time online multiplayer**, or challenge friends in local "hotseat" mode. The typing passages are generated on-the-fly by Google's Gemini API, providing a unique challenge every time.
 
-![Gemini Type Racer Gameplay](./typeracer.jpg)
+![Gemini Type Racer Gameplay](typeracer.jpg)
 
 ---
 
