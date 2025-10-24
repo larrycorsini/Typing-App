@@ -5,6 +5,8 @@ export enum GameState {
   COUNTDOWN = 'COUNTDOWN',
   TYPING = 'TYPING',
   RESULTS = 'RESULTS',
+  PARTY_SETUP = 'PARTY_SETUP',
+  PARTY_TRANSITION = 'PARTY_TRANSITION',
 }
 
 export enum RaceMode {
@@ -14,6 +16,7 @@ export enum RaceMode {
   GHOST = 'GHOST',
   PUBLIC = 'PUBLIC',
   LIVE_RACE = 'LIVE_RACE',
+  PARTY = 'PARTY',
 }
 
 export enum RaceTheme {
@@ -51,6 +54,13 @@ export interface PlayerStats {
   bestWpm: number;
   avgWpm: number;
   avgAccuracy: number;
+}
+
+export interface PartyPlayer {
+  name: string;
+  wpm: number;
+  accuracy: number;
+  rank?: number;
 }
 
 export interface GhostData {

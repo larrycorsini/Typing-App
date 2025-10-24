@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { GameState, Player, RaceMode, RaceTheme, Toast, TypingStats, WpmDataPoint, PlayerStats, Achievement, LeaderboardEntry, GhostData, PlayerSettings, UnlockedCustomizations } from './types';
+import { GameState, Player, RaceMode, RaceTheme, Toast, TypingStats, WpmDataPoint, PlayerStats, Achievement, LeaderboardEntry, GhostData, PlayerSettings, UnlockedCustomizations, PartyPlayer } from './types';
 import { useTypingGame } from './hooks/useTypingGame';
 import { getTypingParagraph } from './services/geminiService';
 import { soundService } from './services/soundService';
@@ -50,6 +50,10 @@ interface AppState {
   elapsedTime: number;
   lobbyCountdown: number;
   
+  // Party Race State
+  partyPlayers: PartyPlayer[];
+  currentPartyPlayerIndex: number;
+
   // Typing Hook State
   typed: string;
   errors: Set<number>;
@@ -83,6 +87,15 @@ interface AppState {
   updateGame: (deltaTime: number) => void;
   endRace: () => void;
   resetLobby: () => void;
+
+  // Party Race Actions
+  addPartyPlayer: (name: string) => void;
+  removePartyPlayer: (name: string) => void;
+  startPartySetup: () => void;
+  startPartyGame: () => void;
+  nextPartyTurn: () => void;
+  prepareNextPartyTurn: () => void;
+
   toggleMute: () => void;
   setShowStatsModal: (show: boolean) => void;
   setShowLeaderboardModal: (show: boolean) => void;
@@ -112,6 +125,9 @@ export const useStore = create<AppState>((set, get) => ({
   elapsedTime: 0,
   lobbyCountdown: 10,
   
+  partyPlayers: [],
+  currentPartyPlayerIndex: 0,
+
   typed: '',
   errors: new Set(),
   playerStats: { wpm: 0, accuracy: 0, progress: 0 },
@@ -151,6 +167,8 @@ export const useStore = create<AppState>((set, get) => ({
     set({ raceMode: mode });
     if (mode === RaceMode.LIVE_RACE) {
         get().startLiveRaceLobby();
+    } else if (mode === RaceMode.PARTY) {
+        get().startPartySetup();
     } else {
         get().initializeGame();
     }
@@ -192,7 +210,7 @@ export const useStore = create<AppState>((set, get) => ({
         } else {
              set({textToType: "Could not load ghost data."}); return;
         }
-    } else {
+    } else if (raceMode !== RaceMode.PARTY) {
          paragraph = await getTypingParagraph(raceTheme, raceMode);
          if (get().gameState !== GameState.LIVE_RACE_LOBBY) {
            const numBots = raceMode === RaceMode.PUBLIC ? 4 : 2;
@@ -204,6 +222,8 @@ export const useStore = create<AppState>((set, get) => ({
               });
            }
          }
+    } else { // Party Mode
+        paragraph = await getTypingParagraph(raceTheme, RaceMode.SOLO_MEDIUM); // Party mode uses medium text
     }
     
     set({ players: initialPlayers, textToType: paragraph });
@@ -214,11 +234,12 @@ export const useStore = create<AppState>((set, get) => ({
       const botNamePool = [...BOT_NAMES].sort(() => 0.5 - Math.random());
       let playerJoinIndex = 0;
 
+      const paragraphPromise = getTypingParagraph(get().raceTheme!, RaceMode.LIVE_RACE);
+
       lobbyInterval = setInterval(() => {
           const { lobbyCountdown, players } = get();
           if (lobbyCountdown > 0) {
               set({ lobbyCountdown: lobbyCountdown - 1 });
-              // Add a player periodically
               if (lobbyCountdown % 2 === 0 && playerJoinIndex < botNamePool.length && players.length < 8) {
                   const newBot: Player = {
                       id: `bot-${playerJoinIndex}`, name: botNamePool[playerJoinIndex], isPlayer: false, progress: 0, wpm: 0, accuracy: 98,
@@ -230,7 +251,13 @@ export const useStore = create<AppState>((set, get) => ({
           } else {
               clearInterval(lobbyInterval!);
               lobbyInterval = null;
-              get().initializeGame().then(() => get().startGame());
+              paragraphPromise.then(paragraph => {
+                  set(state => {
+                      const finalLobbyPlayers = state.players.map(p => ({...p}));
+                      return { textToType: paragraph, players: finalLobbyPlayers };
+                  });
+                  get().startGame();
+              });
           }
       }, 1000);
   },
@@ -241,74 +268,73 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
   updateGame: (deltaTime: number) => {
-    const { raceMode, players, playerStats, wpmHistory, textToType } = get();
-    if(!raceMode || !textToType) return;
-    
-    const botBehavior = getBotBehavior(raceMode);
-    const playerProgress = playerStats.progress || 0;
-    
-    const updatedPlayers = players.map(p => {
-        if (p.isPlayer) {
-          return { ...p, progress: playerStats.progress, wpm: playerStats.wpm, accuracy: playerStats.accuracy, wpmHistory };
+    set(state => {
+        if (state.gameState !== GameState.TYPING || !state.raceMode || !state.textToType) {
+            return state;
         }
-        if (p.progress >= 100) return p;
-        
-        let newProgress = p.progress;
-        let currentWpm = p.wpm;
 
-        if (p.isGhost && p.wpmHistory) {
-             const ghostElapsedTime = get().elapsedTime;
-             const nextHistoryPoint = p.wpmHistory.find(h => h.time > ghostElapsedTime);
-             newProgress = nextHistoryPoint ? nextHistoryPoint.progress : 100;
-             currentWpm = nextHistoryPoint ? nextHistoryPoint.wpm : p.targetWpm || 0;
-        } else {
-            if (p.mistakeCycles && p.mistakeCycles > 0) {
-              return { ...p, mistakeCycles: p.mistakeCycles - 1 };
+        const botBehavior = getBotBehavior(state.raceMode);
+        const playerProgress = state.playerStats.progress || 0;
+        
+        const updatedPlayers = state.players.map(p => {
+            if (p.isPlayer) {
+              return { ...p, progress: state.playerStats.progress, wpm: state.playerStats.wpm, accuracy: state.playerStats.accuracy, wpmHistory: state.wpmHistory };
             }
-            if (Math.random() < botBehavior.mistakeChance) {
-              return { ...p, mistakeCycles: botBehavior.mistakeDuration };
+            if (p.progress >= 100) return p;
+            
+            let newProgress = p.progress;
+            let currentWpm = p.wpm;
+
+            if (p.isGhost && p.wpmHistory) {
+                 const ghostElapsedTime = state.elapsedTime;
+                 const nextHistoryPoint = p.wpmHistory.find(h => h.time > ghostElapsedTime);
+                 newProgress = nextHistoryPoint ? nextHistoryPoint.progress : 100;
+                 currentWpm = nextHistoryPoint ? nextHistoryPoint.wpm : p.targetWpm || 0;
+            } else {
+                if (p.mistakeCycles && p.mistakeCycles > 0) {
+                  return { ...p, mistakeCycles: p.mistakeCycles - 1 };
+                }
+                if (Math.random() < botBehavior.mistakeChance) {
+                  return { ...p, mistakeCycles: botBehavior.mistakeDuration };
+                }
+                const isFallingBehind = !p.isPlayer && playerProgress > 10 && p.progress < playerProgress - 20;
+                const targetWpm = p.targetWpm || 60;
+                const randomFactor = (Math.random() - 0.5) * botBehavior.wpmFluctuation;
+                const wpmBoost = isFallingBehind ? 15 : 0;
+                currentWpm = Math.max(20, targetWpm + randomFactor + wpmBoost);
+                const charsPerSecond = (currentWpm * 5) / 60;
+                const progressIncrement = (charsPerSecond / state.textToType.length) * 100 * deltaTime;
+                newProgress = p.progress + progressIncrement;
             }
-            const isFallingBehind = !p.isPlayer && playerProgress > 10 && p.progress < playerProgress - 20;
-            const targetWpm = p.targetWpm || 60;
-            const randomFactor = (Math.random() - 0.5) * botBehavior.wpmFluctuation;
-            const wpmBoost = isFallingBehind ? 15 : 0;
-            currentWpm = Math.max(20, targetWpm + randomFactor + wpmBoost); // ensure bots have a minimum speed
-            const charsPerSecond = (currentWpm * 5) / 60;
-            const progressIncrement = (charsPerSecond / textToType.length) * 100 * deltaTime;
-            newProgress = p.progress + progressIncrement;
-        }
-        if (newProgress >= 100 && !p.rank) {
-          p.rank = rankCounter++;
-          newProgress = 100;
-        }
-        return { ...p, progress: Math.min(100, newProgress), wpm: Math.round(currentWpm), isFallingBehind: p.isFallingBehind };
+
+            if (newProgress >= 100 && !p.rank) {
+              p.rank = rankCounter++;
+              newProgress = 100;
+            }
+            return { ...p, progress: Math.min(100, newProgress), wpm: Math.round(currentWpm), isFallingBehind: p.isFallingBehind };
+        });
+
+        return { players: updatedPlayers };
     });
-    set({ players: updatedPlayers });
-    
-    const allBotsFinished = updatedPlayers.filter(p => !p.isPlayer).every(p => p.progress >= 100);
-    if (get().isFinished && allBotsFinished) {
-      get().endRace();
-    }
   },
   endRace: () => {
+    if (get().gameState === GameState.RESULTS) return;
+    
+    if (get().raceMode === RaceMode.PARTY) {
+        get().nextPartyTurn();
+        return; 
+    }
+
     if (gameLoopInterval) clearInterval(gameLoopInterval);
     gameLoopInterval = null;
-    if (get().gameState === GameState.RESULTS) return; // Prevent double calls
 
     const { players, raceMode, raceTheme, persistentPlayerStats, addToast } = get();
     
-    // Assign final ranks to any unfinished players based on progress
-    const sortedByProgress = [...players].sort((a,b) => (b.rank ?? 0) - (a.rank ?? 0) || b.progress - a.progress);
-    let maxRank = 0;
-    sortedByProgress.forEach(p => { if(p.rank && p.rank > maxRank) maxRank = p.rank; });
+    const sortedByRank = [...players].filter(p => p.rank).sort((a, b) => a.rank! - b.rank!);
+    const sortedByProgress = [...players].filter(p => !p.rank).sort((a,b) => b.progress - a.progress);
     
-    const finalPlayers = sortedByProgress.map(p => {
-        if (!p.rank) {
-            maxRank++;
-            return {...p, rank: maxRank};
-        }
-        return p;
-    });
+    let currentRank = sortedByRank.length;
+    const finalPlayers = [...sortedByRank, ...sortedByProgress.map(p => ({...p, rank: ++currentRank}))];
 
     set({ gameState: GameState.RESULTS, players: finalPlayers });
     const playerResult = finalPlayers.find(p => p.isPlayer);
@@ -332,8 +358,74 @@ export const useStore = create<AppState>((set, get) => ({
   },
   resetLobby: () => {
     get()._resetTypingHook();
-    set({ raceMode: null, textToType: '', players: [], elapsedTime: 0 });
+    set({ raceMode: null, textToType: '', players: [], elapsedTime: 0, partyPlayers: [], currentPartyPlayerIndex: 0 });
   },
+  
+  // Party Race Actions
+  addPartyPlayer: (name) => {
+    set(state => {
+        if (state.partyPlayers.length >= 4 || state.partyPlayers.find(p => p.name.toLowerCase() === name.toLowerCase()) || !name.trim()) {
+            return state;
+        }
+        return { partyPlayers: [...state.partyPlayers, { name: name.trim(), wpm: 0, accuracy: 0 }] };
+    });
+  },
+  removePartyPlayer: (name) => {
+    set(state => ({ partyPlayers: state.partyPlayers.filter(p => p.name !== name) }));
+  },
+  startPartySetup: () => {
+    set({
+        gameState: GameState.PARTY_SETUP,
+        raceMode: RaceMode.PARTY,
+        partyPlayers: [],
+        currentPartyPlayerIndex: 0
+    });
+    get().initializeGame();
+  },
+  startPartyGame: () => {
+    if (get().partyPlayers.length === 0) return;
+    const firstPlayerName = get().partyPlayers[0].name;
+    set({
+        players: [{ id: PLAYER_ID, name: firstPlayerName, isPlayer: true, progress: 0, wpm: 0, accuracy: 100 }],
+        gameState: GameState.COUNTDOWN,
+    });
+  },
+  nextPartyTurn: () => {
+    const { playerStats, currentPartyPlayerIndex, partyPlayers } = get();
+
+    const updatedPartyPlayers = [...partyPlayers];
+    updatedPartyPlayers[currentPartyPlayerIndex] = {
+        ...updatedPartyPlayers[currentPartyPlayerIndex],
+        wpm: playerStats.wpm,
+        accuracy: playerStats.accuracy
+    };
+
+    const nextIndex = currentPartyPlayerIndex + 1;
+
+    if (nextIndex >= partyPlayers.length) {
+        const finalRankedPlayers = updatedPartyPlayers
+            .sort((a, b) => b.wpm - a.wpm || b.accuracy - a.accuracy)
+            .map((p, i) => ({ ...p, rank: i + 1 }));
+        set({ partyPlayers: finalRankedPlayers, gameState: GameState.RESULTS });
+        soundService.playRaceFinish(true);
+    } else {
+        set({
+            partyPlayers: updatedPartyPlayers,
+            currentPartyPlayerIndex: nextIndex,
+            gameState: GameState.PARTY_TRANSITION,
+        });
+    }
+  },
+  prepareNextPartyTurn: () => {
+    get()._resetTypingHook();
+    const { partyPlayers, currentPartyPlayerIndex } = get();
+    const nextPlayerName = partyPlayers[currentPartyPlayerIndex].name;
+    set(state => ({
+        players: [{ ...state.players[0], name: nextPlayerName }],
+        gameState: GameState.COUNTDOWN,
+    }));
+  },
+
   toggleMute: () => set({ isMuted: soundService.toggleMute() }),
   setShowStatsModal: (show) => set({ showStatsModal: show }),
   setShowLeaderboardModal: (show) => set({ showLeaderboardModal: show }),
@@ -379,7 +471,7 @@ export const AppStateSync: React.FC = () => {
     useEffect(() => {
         if (state.isFinished && state.gameState === GameState.TYPING) {
             let player = useStore.getState().players.find(p => p.isPlayer);
-            if(player && !player.rank) {
+            if(player && !player.rank && state.raceMode !== RaceMode.PARTY) {
                 player.rank = rankCounter++;
                 useStore.setState(s => ({ players: s.players.map(p => p.id === player!.id ? player! : p)}));
                 
@@ -399,7 +491,6 @@ export const AppStateSync: React.FC = () => {
                      localStorage.setItem('gemini-type-racer-ghost', JSON.stringify(ghostData));
                 }
             }
-            // End the race as soon as the player finishes
             useStore.getState().endRace();
         }
     }, [state.isFinished, state.gameState, state.playerStats, state.wpmHistory, state.textToType, state.playerName, state.persistentPlayerStats]);

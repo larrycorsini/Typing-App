@@ -14,6 +14,8 @@ import AchievementsModal from './components/AchievementsModal';
 import ToastContainer from './components/Toast';
 import Lobby from './components/Lobby';
 import SettingsModal from './components/SettingsModal';
+import PartySetup from './components/PartySetup';
+import PartyTransition from './components/PartyTransition';
 
 const App: React.FC = () => {
   const state = useStore();
@@ -63,12 +65,12 @@ const App: React.FC = () => {
           <div role="group" aria-labelledby="mode-label" className="flex flex-wrap justify-center gap-4">
             {(Object.keys(RaceMode) as Array<keyof typeof RaceMode>).map(key => {
               const isGhost = RaceMode[key] === RaceMode.GHOST;
+              const modeName = key.replace(/SOLO_/g, '').replace(/_/g, ' ');
               if (isGhost && !isGhostAvailable) return null;
               
               return (
-              // FIX: Corrected typo from `isGitGhostAvailable` to `isGhostAvailable`.
               <button key={key} onClick={() => state.setRaceMode(RaceMode[key])} disabled={isGhost && !isGhostAvailable} className={`font-bold py-2 px-6 rounded-lg text-lg transition-all duration-200 border-2 ${state.raceMode === RaceMode[key] ? 'bg-[rgb(var(--color-accent-secondary))] border-[rgb(var(--color-accent-secondary))] text-[rgb(var(--color-accent-text))]' : 'border-[rgb(var(--color-border))] text-[rgb(var(--color-text-primary))] hover:bg-[rgb(var(--color-bg-secondary))] hover:border-slate-500'} disabled:opacity-50 disabled:cursor-not-allowed`}>
-                {isGhost ? 'Vs Ghost' : key.replace(/SOLO_/g, '').replace(/_/g, ' ')}
+                {isGhost ? 'Vs Ghost' : modeName}
               </button>
             )})}
           </div>
@@ -79,7 +81,7 @@ const App: React.FC = () => {
           {state.textToType || 'Select a theme and mode to generate a passage...'}
         </p>
       </div>
-      <button onClick={state.startGame} disabled={!state.raceMode || !state.raceTheme || state.textToType.startsWith('Loading') || state.raceMode === RaceMode.LIVE_RACE} className="bg-[rgb(var(--color-accent-secondary))] text-[rgb(var(--color-accent-text))] font-bold py-4 px-8 rounded-lg text-2xl hover:bg-[rgb(var(--color-accent-primary))] focus:outline-none focus:ring-4 focus:ring-[rgba(var(--color-accent-primary),0.5)] transition-all duration-300 disabled:bg-slate-600 disabled:cursor-not-allowed transform hover:scale-105">
+      <button onClick={state.startGame} disabled={!state.raceMode || !state.raceTheme || state.textToType.startsWith('Loading') || state.raceMode === RaceMode.LIVE_RACE || state.raceMode === RaceMode.PARTY} className="bg-[rgb(var(--color-accent-secondary))] text-[rgb(var(--color-accent-text))] font-bold py-4 px-8 rounded-lg text-2xl hover:bg-[rgb(var(--color-accent-primary))] focus:outline-none focus:ring-4 focus:ring-[rgba(var(--color-accent-primary),0.5)] transition-all duration-300 disabled:bg-slate-600 disabled:cursor-not-allowed transform hover:scale-105">
         Start Race
       </button>
     </div>
@@ -95,7 +97,7 @@ const App: React.FC = () => {
         {state.players.map(p => <PlayerCard key={p.id} player={p} />)}
       </div>
       <TypingArea textToType={state.textToType} typed={state.typed} errors={state.errors} />
-      <StatsDisplay stats={state.playerStats} />
+      {state.raceMode !== RaceMode.PARTY && <StatsDisplay stats={state.playerStats} />}
     </>
   );
 
@@ -104,6 +106,8 @@ const App: React.FC = () => {
       case GameState.NAME_SELECTION: return <NameSelection onNameSubmit={state.setPlayerName} />;
       case GameState.LOBBY: return renderLobby();
       case GameState.LIVE_RACE_LOBBY: return <Lobby />;
+      case GameState.PARTY_SETUP: return <PartySetup />;
+      case GameState.PARTY_TRANSITION: return <PartyTransition />;
       case GameState.TYPING: case GameState.COUNTDOWN: return renderGame();
       default: return null;
     }
