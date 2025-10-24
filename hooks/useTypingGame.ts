@@ -4,18 +4,10 @@ import { TypingStats, WpmDataPoint, RaceMode } from '../types';
 import { soundService } from '../services/soundService';
 
 const ENDURANCE_DURATION_SECONDS = 60;
-const ENDURANCE_WORD_POOL = "the of to and a in is it you that he was for on are with as I his they be at one have this from or had by but what some we can out other were all there when up use your how said an each she which do their time if will way about many then them write would like so these her long make thing see him two has look who may part come its now find than first water been called who am its now find day did get come made may part".split(" ");
 
-const generateEnduranceText = () => {
-    let words = [];
-    for (let i = 0; i < 200; i++) {
-        words.push(ENDURANCE_WORD_POOL[Math.floor(Math.random() * ENDURANCE_WORD_POOL.length)]);
-    }
-    return words.join(" ");
-};
-
-export const useTypingGame = (initialText: string, raceMode: RaceMode | null, isGameActive: boolean) => {
-  const [textToType, setTextToType] = useState(initialText);
+// The textToType is now passed directly as a prop, not as `initialText`.
+// This breaks the feedback loop.
+export const useTypingGame = (textToType: string, raceMode: RaceMode | null, isGameActive: boolean) => {
   const [typed, setTyped] = useState<string>('');
   const [errors, setErrors] = useState<Set<number>>(new Set());
   const [stats, setStats] = useState<TypingStats>({ wpm: 0, accuracy: 0, progress: 0, mistypedChars: {} });
@@ -28,14 +20,7 @@ export const useTypingGame = (initialText: string, raceMode: RaceMode | null, is
   const mistypedCharsRef = useRef<Record<string, number>>({});
   const enduranceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  useEffect(() => {
-    if (raceMode === RaceMode.ENDURANCE) {
-        setTextToType(generateEnduranceText());
-    } else {
-        setTextToType(initialText);
-    }
-  }, [initialText, raceMode]);
-
+  // The reset function no longer manages text. The store will provide new text.
   const reset = useCallback(() => {
     setTyped('');
     setErrors(new Set());
@@ -47,12 +32,7 @@ export const useTypingGame = (initialText: string, raceMode: RaceMode | null, is
     lastHistoryPushTimeRef.current = 0;
     mistypedCharsRef.current = {};
     if (enduranceTimerRef.current) clearTimeout(enduranceTimerRef.current);
-    if (raceMode === RaceMode.ENDURANCE) {
-        setTextToType(generateEnduranceText());
-    } else {
-        setTextToType(initialText);
-    }
-  }, [raceMode, initialText]);
+  }, []);
   
   useEffect(() => {
     if (!isGameActive) {
@@ -62,6 +42,7 @@ export const useTypingGame = (initialText: string, raceMode: RaceMode | null, is
   }, [isGameActive]);
 
   useEffect(() => {
+    // The finish condition now correctly depends on the prop `textToType`.
     if (raceMode !== RaceMode.ENDURANCE && typed.length === textToType.length && errors.size === 0 && textToType.length > 0) {
       setIsFinished(true);
     }
@@ -78,6 +59,7 @@ export const useTypingGame = (initialText: string, raceMode: RaceMode | null, is
     const typedChars = typed.length;
     const totalChars = typedChars + errors.size;
     const accuracy = totalChars > 0 ? (typedChars / totalChars) * 100 : 100;
+    // The progress calculation now correctly depends on the prop `textToType`.
     const progress = (correctCharsRef.current / textToType.length) * 100;
 
     const newStats: TypingStats = {
@@ -130,6 +112,7 @@ export const useTypingGame = (initialText: string, raceMode: RaceMode | null, is
       setTyped((prev) => prev.slice(0, -1));
     } else if (key.length === 1) { 
       e.preventDefault();
+      // Logic correctly depends on the prop `textToType`.
       if (typed.length < textToType.length) {
         if (key === textToType[typed.length]) {
           soundService.playKeyStroke(false);
@@ -155,5 +138,5 @@ export const useTypingGame = (initialText: string, raceMode: RaceMode | null, is
     };
   }, [handleKeyDown]);
 
-  return { typed, errors, stats, isFinished, reset, wpmHistory, textToType };
+  return { typed, errors, stats, isFinished, reset, wpmHistory };
 };

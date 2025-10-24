@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { GameState, Player, RaceMode, RaceTheme, Toast, TypingStats, WpmDataPoint, PlayerStats, Achievement, LeaderboardEntry, GhostData, PlayerSettings, UnlockedCustomizations, PartyPlayer, RoomInfo, ServerToClientMessage } from './types';
 import { getTypingParagraph } from './services/geminiService';
@@ -35,6 +36,16 @@ const getBotBehavior = (mode: RaceMode) => {
   }
 };
 
+const ENDURANCE_WORD_POOL = "the of to and a in is it you that he was for on are with as I his they be at one have this from or had by but what some we can out other were all there when up use your how said an each she which do their time if will way about many then them write would like so these her long make thing see him two has look who may part come its now find than first water been called who am its now find day did get come made may part".split(" ");
+
+const generateEnduranceText = () => {
+    let words = [];
+    for (let i = 0; i < 200; i++) {
+        words.push(ENDURANCE_WORD_POOL[Math.floor(Math.random() * ENDURANCE_WORD_POOL.length)]);
+    }
+    return words.join(" ");
+};
+
 type SocketStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
 
 interface AppState {
@@ -46,6 +57,7 @@ interface AppState {
   textToType: string;
   players: Player[];
   elapsedTime: number;
+  textGenerationRequestCounter: number;
 
   // Online Race State
   socketStatus: SocketStatus;
@@ -71,6 +83,7 @@ interface AppState {
   showLeaderboardModal: boolean;
   showAchievementsModal: boolean;
   showSettingsModal: boolean;
+  showTutorialModal: boolean;
   toasts: Toast[];
 
   // Persistent State
@@ -115,6 +128,7 @@ interface AppState {
   setShowLeaderboardModal: (show: boolean) => void;
   setShowAchievementsModal: (show: boolean) => void;
   setShowSettingsModal: (show: boolean) => void;
+  setShowTutorialModal: (show: boolean) => void;
   applyTheme: (themeId: PlayerSettings['activeThemeId']) => void;
   applySoundPack: (packId: PlayerSettings['activeSoundPackId']) => void;
   addToast: (toast: Omit<Toast, 'id'>) => void;
@@ -122,7 +136,7 @@ interface AppState {
   
   // Internal hook management
   _resetTypingHook: () => void;
-  _setTypingHookState: (newState: Partial<Pick<AppState, 'typed' | 'errors' | 'playerStats' | 'isFinished' | 'wpmHistory' | 'textToType'>>) => void;
+  _setTypingHookState: (newState: Partial<Pick<AppState, 'typed' | 'errors' | 'playerStats' | 'isFinished' | 'wpmHistory'>>) => void;
 }
 
 let rankCounter = 1;
@@ -136,6 +150,7 @@ export const useStore = create<AppState>((set, get) => ({
   textToType: '',
   players: [],
   elapsedTime: 0,
+  textGenerationRequestCounter: 0,
   
   socketStatus: 'disconnected',
   onlineRooms: [],
@@ -157,6 +172,7 @@ export const useStore = create<AppState>((set, get) => ({
   showLeaderboardModal: false,
   showAchievementsModal: false,
   showSettingsModal: false,
+  showTutorialModal: false,
   toasts: [],
 
   persistentPlayerStats: { totalRaces: 0, wins: 0, bestWpm: 0, avgWpm: 0, avgAccuracy: 0 },
@@ -173,7 +189,14 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
   setPlayerName: (name) => {
-    set({ playerName: name, gameState: GameState.LOBBY });
+    const tutorialSeen = localStorage.getItem('gemini-type-racer-tutorial-seen') === 'true';
+
+    set({ 
+        playerName: name, 
+        gameState: GameState.LOBBY,
+        showTutorialModal: !tutorialSeen
+    });
+    
     const storedStats = localStorage.getItem('gemini-type-racer-stats');
     if(storedStats) {
         set({ persistentPlayerStats: JSON.parse(storedStats) });
@@ -212,6 +235,9 @@ export const useStore = create<AppState>((set, get) => ({
     rankCounter = 1;
     set({ textToType: 'Loading passage...' });
 
+    const currentRequestId = get().textGenerationRequestCounter + 1;
+    set({ textGenerationRequestCounter: currentRequestId });
+
     const [baseWpm, range] = getBotWpmRange(raceMode);
     
     let paragraph = '';
@@ -231,7 +257,10 @@ export const useStore = create<AppState>((set, get) => ({
              set({textToType: "Could not load ghost data."}); return;
         }
     } else if (![RaceMode.PARTY, RaceMode.ONLINE_RACE, RaceMode.ENDURANCE, RaceMode.CUSTOM_TEXT, RaceMode.DAILY_CHALLENGE].includes(raceMode)) {
-         paragraph = await getTypingParagraph(raceTheme!, raceMode);
+         const fetchedParagraph = await getTypingParagraph(raceTheme!, raceMode);
+         if (get().textGenerationRequestCounter !== currentRequestId) return;
+         paragraph = fetchedParagraph;
+         
          const numBots = raceMode === RaceMode.PUBLIC ? 4 : 2;
          const botNamePool = [...BOT_NAMES].sort(() => 0.5 - Math.random());
          for(let i=0; i<numBots; i++) {
@@ -241,10 +270,11 @@ export const useStore = create<AppState>((set, get) => ({
             });
          }
     } else if (raceMode === RaceMode.PARTY) {
-        paragraph = await getTypingParagraph(RaceTheme.HARRY_POTTER, RaceMode.SOLO_MEDIUM); // Party mode uses medium text
+        const fetchedParagraph = await getTypingParagraph(RaceTheme.HARRY_POTTER, RaceMode.SOLO_MEDIUM); // Party mode uses medium text
+        if (get().textGenerationRequestCounter !== currentRequestId) return;
+        paragraph = fetchedParagraph;
     } else if (raceMode === RaceMode.ENDURANCE) {
-        // Handled by the hook, but we need an initial non-empty text
-        paragraph = "Get ready to type as many words as you can...";
+        paragraph = generateEnduranceText();
     }
     
     set({ players: initialPlayers, textToType: paragraph });
@@ -384,14 +414,6 @@ export const useStore = create<AppState>((set, get) => ({
   // Online Actions
   setSocketStatus: (status) => {
     set({ socketStatus: status });
-    if (status === 'disconnected' || status === 'error') {
-        const { gameState, addToast, setGameState } = get();
-        if (gameState === GameState.ONLINE_LOBBY || get().raceMode === RaceMode.ONLINE_RACE) {
-            addToast({ message: "Connection lost. Returning to lobby.", type: 'error' });
-            setGameState(GameState.LOBBY);
-        }
-        set({ onlineRooms: [], currentRoomId: null, players: [], myId: null });
-    }
   },
   handleServerMessage: (message) => {
     switch (message.type) {
@@ -528,6 +550,12 @@ export const useStore = create<AppState>((set, get) => ({
   setShowLeaderboardModal: (show) => set({ showLeaderboardModal: show }),
   setShowAchievementsModal: (show) => set({ showAchievementsModal: show }),
   setShowSettingsModal: (show) => set({ showSettingsModal: show }),
+  setShowTutorialModal: (show) => {
+    set({ showTutorialModal: show });
+    if (!show) {
+        localStorage.setItem('gemini-type-racer-tutorial-seen', 'true');
+    }
+  },
   applyTheme: (themeId) => {
       const newSettings: PlayerSettings = { ...get().playerSettings, activeThemeId: themeId };
       customizationService.savePlayerSettings(newSettings);

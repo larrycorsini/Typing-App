@@ -3,6 +3,7 @@ import { ClientToServerMessage, ServerToClientMessage } from '../types';
 
 let socket: WebSocket | null = null;
 let reconnectInterval: NodeJS.Timeout | null = null;
+let isAttemptingReconnect = false;
 
 const connect = () => {
     if (socket && socket.readyState === WebSocket.OPEN) {
@@ -16,6 +17,7 @@ const connect = () => {
     socket.onopen = () => {
         console.log('WebSocket connection established.');
         useStore.getState().setSocketStatus('connected');
+        isAttemptingReconnect = false; // Reset flag on successful connection
         if (reconnectInterval) {
             clearInterval(reconnectInterval);
             reconnectInterval = null;
@@ -35,19 +37,26 @@ const connect = () => {
 
     socket.onclose = () => {
         console.log('WebSocket connection closed.');
-        useStore.getState().setSocketStatus('disconnected');
+        // Don't change status if it's already 'error', as onerror handles that.
+        if (useStore.getState().socketStatus !== 'error') {
+            useStore.getState().setSocketStatus('disconnected');
+        }
         socket = null;
         if (!reconnectInterval) {
             reconnectInterval = setInterval(() => {
-                console.log('Attempting to reconnect...');
-                connect();
+                if (!socket || socket.readyState === WebSocket.CLOSED) {
+                    connect();
+                }
             }, 5000);
         }
     };
 
     socket.onerror = () => {
-        console.error('WebSocket connection error. Ensure the backend server is running (`node server.js`).');
-        useStore.getState().addToast({ message: "Connection to server failed. Online features are unavailable.", type: 'error' });
+        // Only log the error once per reconnection cycle
+        if (!isAttemptingReconnect) {
+            console.error('WebSocket connection error. Ensure the backend server is running (`node server.js`).');
+            isAttemptingReconnect = true; 
+        }
         useStore.getState().setSocketStatus('error');
         socket?.close();
     };

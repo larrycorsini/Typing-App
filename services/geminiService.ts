@@ -1,14 +1,18 @@
 
+
 import { GoogleGenAI } from "@google/genai";
 import { RaceMode, RaceTheme } from "../types";
 
 const API_KEY = process.env.API_KEY;
 
-if (!API_KEY) {
-  throw new Error("API_KEY environment variable not set");
+// Gracefully handle missing API key to prevent app crash on startup.
+// The Gemini client will only be initialized if the key is present.
+let ai: GoogleGenAI | null = null;
+if (API_KEY) {
+  ai = new GoogleGenAI({ apiKey: API_KEY });
+} else {
+  console.error("API_KEY environment variable not set. Features requiring the Gemini API will be disabled.");
 }
-
-const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 const getPromptForThemeAndMode = (theme: RaceTheme, mode: RaceMode): string => {
   let topic = "one of the Harry Potter books";
@@ -50,16 +54,23 @@ const getPromptForThemeAndMode = (theme: RaceTheme, mode: RaceMode): string => {
 const fallbackText = "Mr. and Mrs. Dursley, of number four, Privet Drive, were proud to say that they were perfectly normal, thank you very much.";
 
 export const getTypingParagraph = async (theme: RaceTheme, mode: RaceMode): Promise<string> => {
+  // Check if the AI client was initialized. If not, return an error message.
+  if (!ai) {
+    return "Gemini API key not configured. Please set the API_KEY environment variable. Using fallback text.";
+  }
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: getPromptForThemeAndMode(theme, mode),
     });
-    const text = response.text.trim().replace(/\n/g, ' ');
-    if (!text) {
-        return fallbackText;
+    const text = response.text; // Use the text getter
+    // Defensively check if the result is a non-empty string.
+    if (typeof text === 'string' && text.trim()) {
+      return text.trim().replace(/\n/g, ' ');
     }
-    return text;
+    // If we get an empty string or non-string response, use fallback.
+    console.warn("Received empty or invalid response from Gemini, using fallback text.");
+    return fallbackText;
   } catch (error) {
     console.error("Error fetching paragraph from Gemini:", error);
     return fallbackText;

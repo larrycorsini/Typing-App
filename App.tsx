@@ -1,4 +1,5 @@
 
+
 import React, { useEffect, useState } from 'react';
 import { GameState, RaceMode, RaceTheme } from './types';
 import { useStore } from './store';
@@ -13,6 +14,7 @@ import LeaderboardModal from './components/LeaderboardModal';
 import AchievementsModal from './components/AchievementsModal';
 import ToastContainer from './components/Toast';
 import SettingsModal from './components/SettingsModal';
+import TutorialModal from './components/TutorialModal';
 import PartySetup from './components/PartySetup';
 import PartyTransition from './components/PartyTransition';
 import OnlineLobby from './components/OnlineLobby';
@@ -124,6 +126,7 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 md:p-8 relative">
       <ToastContainer />
+      {state.showTutorialModal && <TutorialModal />}
       <button onClick={state.toggleMute} className="absolute top-4 left-4 w-12 h-12 bg-[rgba(var(--color-bg-secondary),0.8)] backdrop-blur-sm rounded-full flex items-center justify-center text-2xl border border-[rgb(var(--color-border))] hover:bg-[rgb(var(--color-bg-secondary))] transition-colors z-30" aria-label={state.isMuted ? "Unmute sound" : "Mute sound"}>
         {state.isMuted ? '🔇' : '🔊'}
       </button>

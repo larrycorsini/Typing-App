@@ -7,9 +7,12 @@ interface TypingAreaProps {
 }
 
 const TypingArea: React.FC<TypingAreaProps> = ({ textToType, typed, errors }) => {
+  // Ensure textToType is always a string before calling split
+  const safeTextToType = typeof textToType === 'string' ? textToType : '';
+
   return (
     <div className="bg-[rgb(var(--color-bg-secondary))] p-6 rounded-lg shadow-lg text-2xl md:text-3xl leading-relaxed tracking-wider select-none font-medium">
-      {textToType.split('').map((char, index) => {
+      {safeTextToType.split('').map((char, index) => {
         let charClass = 'text-slate-500';
         let isCursor = index === typed.length;
         
