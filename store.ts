@@ -242,15 +242,17 @@ export const useStore = create<AppState>((set, get) => ({
   },
   updateGame: (deltaTime: number) => {
     const { raceMode, players, playerStats, wpmHistory, textToType } = get();
-    if(!raceMode) return;
+    if(!raceMode || !textToType) return;
+    
     const botBehavior = getBotBehavior(raceMode);
-    const playerProgress = players.find(p => p.isPlayer)?.progress || 0;
+    const playerProgress = playerStats.progress || 0;
     
     const updatedPlayers = players.map(p => {
         if (p.isPlayer) {
           return { ...p, progress: playerStats.progress, wpm: playerStats.wpm, accuracy: playerStats.accuracy, wpmHistory };
         }
         if (p.progress >= 100) return p;
+        
         let newProgress = p.progress;
         let currentWpm = p.wpm;
 
@@ -270,7 +272,7 @@ export const useStore = create<AppState>((set, get) => ({
             const targetWpm = p.targetWpm || 60;
             const randomFactor = (Math.random() - 0.5) * botBehavior.wpmFluctuation;
             const wpmBoost = isFallingBehind ? 15 : 0;
-            currentWpm = Math.max(0, targetWpm + randomFactor + wpmBoost);
+            currentWpm = Math.max(20, targetWpm + randomFactor + wpmBoost); // ensure bots have a minimum speed
             const charsPerSecond = (currentWpm * 5) / 60;
             const progressIncrement = (charsPerSecond / textToType.length) * 100 * deltaTime;
             newProgress = p.progress + progressIncrement;
@@ -279,22 +281,41 @@ export const useStore = create<AppState>((set, get) => ({
           p.rank = rankCounter++;
           newProgress = 100;
         }
-        return { ...p, progress: newProgress, wpm: Math.round(currentWpm) };
+        return { ...p, progress: Math.min(100, newProgress), wpm: Math.round(currentWpm), isFallingBehind: p.isFallingBehind };
     });
     set({ players: updatedPlayers });
-    const allFinished = get().players.length > 0 && get().players.every(p => p.progress >= 100);
-    if (allFinished) get().endRace();
+    
+    const allBotsFinished = updatedPlayers.filter(p => !p.isPlayer).every(p => p.progress >= 100);
+    if (get().isFinished && allBotsFinished) {
+      get().endRace();
+    }
   },
   endRace: () => {
     if (gameLoopInterval) clearInterval(gameLoopInterval);
     gameLoopInterval = null;
-    set({ gameState: GameState.RESULTS });
+    if (get().gameState === GameState.RESULTS) return; // Prevent double calls
+
     const { players, raceMode, raceTheme, persistentPlayerStats, addToast } = get();
-    const player = players.find(p => p.isPlayer);
-    soundService.playRaceFinish(player?.rank === 1);
     
-    if (player && raceMode && raceTheme) {
-        const newlyUnlocked = checkAndUnlockAchievements({ wpm: player.wpm, accuracy: player.accuracy, rank: player.rank!, theme: raceTheme, stats: persistentPlayerStats });
+    // Assign final ranks to any unfinished players based on progress
+    const sortedByProgress = [...players].sort((a,b) => (b.rank ?? 0) - (a.rank ?? 0) || b.progress - a.progress);
+    let maxRank = 0;
+    sortedByProgress.forEach(p => { if(p.rank && p.rank > maxRank) maxRank = p.rank; });
+    
+    const finalPlayers = sortedByProgress.map(p => {
+        if (!p.rank) {
+            maxRank++;
+            return {...p, rank: maxRank};
+        }
+        return p;
+    });
+
+    set({ gameState: GameState.RESULTS, players: finalPlayers });
+    const playerResult = finalPlayers.find(p => p.isPlayer);
+    soundService.playRaceFinish(playerResult?.rank === 1);
+    
+    if (playerResult && raceMode && raceTheme) {
+        const newlyUnlocked = checkAndUnlockAchievements({ wpm: playerResult.wpm, accuracy: playerResult.accuracy, rank: playerResult.rank!, theme: raceTheme, stats: persistentPlayerStats });
         newlyUnlocked.forEach(ach => {
             addToast({ message: `Achievement: ${ach.name}`, type: 'success' });
             if (ach.reward?.type === 'theme') {
@@ -304,7 +325,7 @@ export const useStore = create<AppState>((set, get) => ({
         });
 
         if(raceMode !== RaceMode.GHOST) {
-            addLeaderboardEntry({ name: player.name, wpm: player.wpm, accuracy: player.accuracy });
+            addLeaderboardEntry({ name: playerResult.name, wpm: playerResult.wpm, accuracy: playerResult.accuracy });
         }
     }
     set({ achievements: getAchievements(), leaderboard: getLeaderboard(), unlockedCustomizations: customizationService.getUnlocked() });
@@ -345,18 +366,18 @@ export const AppStateSync: React.FC = () => {
     useEffect(() => {
         if (state.gameState === GameState.TYPING) {
             gameLoopInterval = setInterval(() => {
-                useStore.setState(s => ({ elapsedTime: s.elapsedTime + 0.5 }));
-                state.updateGame(0.5);
-            }, 500);
+                useStore.setState(s => ({ elapsedTime: s.elapsedTime + 1 }));
+                useStore.getState().updateGame(1);
+            }, 1000);
         } else {
             if (gameLoopInterval) clearInterval(gameLoopInterval);
             gameLoopInterval = null;
         }
         return () => { if (gameLoopInterval) clearInterval(gameLoopInterval); };
-    }, [state.gameState, state.updateGame]);
+    }, [state.gameState]);
     
     useEffect(() => {
-        if (state.isFinished) {
+        if (state.isFinished && state.gameState === GameState.TYPING) {
             let player = useStore.getState().players.find(p => p.isPlayer);
             if(player && !player.rank) {
                 player.rank = rankCounter++;
@@ -378,8 +399,10 @@ export const AppStateSync: React.FC = () => {
                      localStorage.setItem('gemini-type-racer-ghost', JSON.stringify(ghostData));
                 }
             }
+            // End the race as soon as the player finishes
+            useStore.getState().endRace();
         }
-    }, [state.isFinished, state.playerStats, state.wpmHistory, state.textToType, state.playerName, state.persistentPlayerStats]);
+    }, [state.isFinished, state.gameState, state.playerStats, state.wpmHistory, state.textToType, state.playerName, state.persistentPlayerStats]);
 
     return null;
 }
