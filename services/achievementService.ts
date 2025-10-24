@@ -1,12 +1,16 @@
-
-import { Achievement, AchievementId, PlayerStats, RaceTheme } from '../types';
+import { Achievement, AchievementId, PlayerStats, RaceTheme, CustomizationTheme } from '../types';
 
 const ACHIEVEMENTS_STORAGE_KEY = 'gemini-type-racer-achievements';
 
 const allAchievements: Omit<Achievement, 'unlocked'>[] = [
     { id: 'FIRST_RACE', name: 'Off the Starting Blocks', description: 'Complete your first race.' },
     { id: 'FIRST_WIN', name: 'Victory Lap', description: 'Win your first race.' },
-    { id: 'WPM_100', name: 'Need for Speed', description: 'Achieve a WPM of 100 or more.' },
+    { 
+      id: 'WPM_100', 
+      name: 'Need for Speed', 
+      description: 'Achieve a WPM of 100 or more.',
+      reward: { type: 'theme', id: 'fiery' }
+    },
     { id: 'PERFECT_ACCURACY', name: 'Flawless Victory', description: 'Finish a race with 100% accuracy.' },
     { id: 'ALL_THEMES', name: 'Globetrotter', description: 'Complete a race in every theme.' },
 ];

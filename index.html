@@ -10,8 +10,31 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
+      :root {
+        --color-bg-primary: 22 34 54; /* slate-900 */
+        --color-bg-secondary: 30 41 59; /* slate-800 */
+        --color-text-primary: 248 250 252; /* slate-100 */
+        --color-text-secondary: 148 163 184; /* slate-400 */
+        --color-accent-primary: 34 211 238; /* cyan-400 */
+        --color-accent-secondary: 6 182 212; /* cyan-500 */
+        --color-accent-text: 15 23 42; /* slate-900 */
+        --color-border: 51 65 85; /* slate-700 */
+      }
+      body[data-theme="fiery"] {
+        --color-bg-primary: 41 23 23;
+        --color-bg-secondary: 59 30 30;
+        --color-text-primary: 255 237 213;
+        --color-text-secondary: 251 191 140;
+        --color-accent-primary: 251 146 60;
+        --color-accent-secondary: 249 115 22;
+        --color-accent-text: 41 23 23;
+        --color-border: 89 45 45;
+      }
       body {
         font-family: 'Roboto Mono', monospace;
+        background-color: rgb(var(--color-bg-primary));
+        color: rgb(var(--color-text-primary));
+        transition: background-color 0.3s, color 0.3s;
       }
       @keyframes fadeIn {
         from { opacity: 0; }
@@ -64,12 +87,13 @@
     "@google/genai": "https://aistudiocdn.com/@google/genai@^1.27.0",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
     "zustand": "https://aistudiocdn.com/zustand@^4.5.4",
-    "zustand/": "https://aistudiocdn.com/zustand@^4.5.4/"
+    "zustand/": "https://aistudiocdn.com/zustand@^4.5.4/",
+    "@jest/globals": "https://aistudiocdn.com/@jest/globals@^30.2.0"
   }
 }
 </script>
 </head>
-  <body class="bg-slate-900 text-slate-100">
+  <body>
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>

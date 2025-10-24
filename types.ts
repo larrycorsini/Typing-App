@@ -1,6 +1,7 @@
 export enum GameState {
   NAME_SELECTION = 'NAME_SELECTION',
   LOBBY = 'LOBBY',
+  LIVE_RACE_LOBBY = 'LIVE_RACE_LOBBY',
   COUNTDOWN = 'COUNTDOWN',
   TYPING = 'TYPING',
   RESULTS = 'RESULTS',
@@ -12,6 +13,7 @@ export enum RaceMode {
   SOLO_HARD = 'SOLO_HARD',
   GHOST = 'GHOST',
   PUBLIC = 'PUBLIC',
+  LIVE_RACE = 'LIVE_RACE',
 }
 
 export enum RaceTheme {
@@ -59,11 +61,28 @@ export interface GhostData {
 
 export type AchievementId = 'FIRST_RACE' | 'FIRST_WIN' | 'WPM_100' | 'PERFECT_ACCURACY' | 'ALL_THEMES';
 
+export interface CustomizationTheme {
+    id: 'default' | 'fiery';
+    name: string;
+}
+
+export interface PlayerSettings {
+    activeThemeId: CustomizationTheme['id'];
+}
+
+export interface UnlockedCustomizations {
+    themes: CustomizationTheme['id'][];
+}
+
 export interface Achievement {
   id: AchievementId;
   name: string;
   description: string;
   unlocked: boolean;
+  reward?: {
+    type: 'theme';
+    id: CustomizationTheme['id'];
+  }
 }
 
 export interface LeaderboardEntry {
@@ -79,7 +98,6 @@ export interface Toast {
     message: string;
     type: 'success' | 'info' | 'error';
 }
-// FIX: Moved TypingStats here from hooks/useTypingGame.ts so it can be shared with the store.
 export interface TypingStats {
   wpm: number;
   accuracy: number;
