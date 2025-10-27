@@ -59,6 +59,7 @@ The backend server powers the Online Multiplayer and Daily Challenge modes.
 
 2.  **Install Dependencies**: Open a terminal in the project directory and run:
     ```bash
+    Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
     npm install
     ```
 
@@ -85,6 +86,7 @@ The frontend is a modern, build-less application. To run it locally, you need to
     -   Open a **new** terminal window in the same project directory.
     -   Run the following command to start a simple web server:
         ```bash
+        Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
         npx serve
         ```
     -   This command will give you a local URL, typically `http://localhost:3000`. Open this URL in your web browser.
