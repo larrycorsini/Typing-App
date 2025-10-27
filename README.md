@@ -41,29 +41,13 @@ This project consists of a frontend (a build-less React app) and a backend (a No
 
 The backend server powers the Online Multiplayer and Daily Challenge modes.
 
-1.  **Create `package.json`**: In the project's root directory, create a file named `package.json` with this content:
-    ```json
-    {
-      "name": "gemini-type-racer-server",
-      "version": "1.0.0",
-      "description": "Backend for Gemini Type Racer",
-      "main": "server.js",
-      "scripts": {
-        "start": "node server.js"
-      },
-      "dependencies": {
-        "ws": "^8.17.0"
-      }
-    }
-    ```
-
-2.  **Install Dependencies**: Open a terminal in the project directory and run:
+1.  **Install Dependencies**: Open a terminal in the project directory and run:
     ```bash
     Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
     npm install
     ```
 
-3.  **Start the Server**:
+2.  **Start the Server**:
     ```bash
     npm start
     ```
