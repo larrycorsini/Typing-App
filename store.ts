@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { GameState, Player, RaceMode, RaceTheme, Toast, TypingStats, WpmDataPoint, PlayerStats, Achievement, LeaderboardEntry, GhostData, PlayerSettings, UnlockedCustomizations, PartyPlayer, RoomInfo, ServerToClientMessage, CourseLesson } from './types';
+import { GameState, Player, RaceMode, RaceTheme, Toast, TypingStats, WpmDataPoint, PlayerStats, Achievement, LeaderboardEntry, GhostData, PlayerSettings, UnlockedCustomizations, PartyPlayer, RoomInfo, ServerToClientMessage, CourseLesson, PlayerCharacter } from './types';
 import { getTypingParagraph } from './services/geminiService';
 import { soundService } from './services/soundService';
 import { getAchievements, checkAndUnlockAchievements } from './services/achievementService';
@@ -7,9 +7,12 @@ import { getLeaderboard, addLeaderboardEntry } from './services/leaderboardServi
 import { customizationService } from './services/customizationService';
 import { websocketService } from './services/websocketService';
 import { courseService } from './services/courseService';
+import { characterService } from './services/characterService';
 
 const BOT_NAMES = ['RacerX', 'Speedy', 'KeyMaster', 'TypoBot', 'CodeCrusher', 'LyricLover', 'QuoteQueen', 'GhostRider', 'PixelPusher', 'ByteBlaster'];
 const PLAYER_ID = 'player-1';
+const BOT_COLORS = ['#FFFFFF', '#8A2BE2', '#32CD32', '#1E90FF', '#FF4500', '#FF69B4', '#F0E68C', '#7FFFD4'];
+
 
 const getBotWpmRange = (mode: RaceMode): [number, number] => {
   switch (mode) {
@@ -58,6 +61,8 @@ interface AppState {
   players: Player[];
   elapsedTime: number;
   textGenerationRequestCounter: number;
+  xpGainedThisRace: number;
+  rankCounter: number;
 
   // Online Race State
   socketStatus: SocketStatus;
@@ -88,6 +93,7 @@ interface AppState {
   showAchievementsModal: boolean;
   showSettingsModal: boolean;
   showTutorialModal: boolean;
+  showCharacterModal: boolean;
   toasts: Toast[];
 
   // Persistent State
@@ -96,10 +102,12 @@ interface AppState {
   leaderboard: LeaderboardEntry[];
   playerSettings: PlayerSettings;
   unlockedCustomizations: UnlockedCustomizations;
+  playerCharacter: PlayerCharacter;
 
   // Actions
   setGameState: (state: GameState) => void;
-  setPlayerName: (name: string) => void;
+  setPlayerName: (name: string, color: string) => void;
+  changeUser: () => void;
   setRaceMode: (mode: RaceMode) => Promise<void>;
   setRaceTheme: (theme: RaceTheme) => void;
   initializeGame: () => Promise<void>;
@@ -107,6 +115,7 @@ interface AppState {
   updateGame: (deltaTime: number) => void;
   endRace: () => void;
   resetLobby: () => void;
+  _addXp: (amount: number) => void;
 
   // Online Actions
   setSocketStatus: (status: SocketStatus) => void;
@@ -130,14 +139,19 @@ interface AppState {
   nextPartyTurn: () => void;
   prepareNextPartyTurn: () => void;
 
+  // Character Training
+  trainStat: (stat: 'running') => void;
+
   toggleMute: () => void;
   setShowStatsModal: (show: boolean) => void;
   setShowLeaderboardModal: (show: boolean) => void;
   setShowAchievementsModal: (show: boolean) => void;
   setShowSettingsModal: (show: boolean) => void;
   setShowTutorialModal: (show: boolean) => void;
+  setShowCharacterModal: (show: boolean) => void;
   applyTheme: (themeId: PlayerSettings['activeThemeId']) => void;
   applySoundPack: (packId: PlayerSettings['activeSoundPackId']) => void;
+  equipItem: (itemId: string) => void;
   addToast: (toast: Omit<Toast, 'id'>) => void;
   removeToast: (id: string) => void;
   
@@ -145,8 +159,6 @@ interface AppState {
   _resetTypingHook: () => void;
   _setTypingHookState: (newState: Partial<Pick<AppState, 'typed' | 'errors' | 'playerStats' | 'isFinished' | 'wpmHistory'>>) => void;
 }
-
-let rankCounter = 1;
 
 export const useStore = create<AppState>((set, get) => ({
   // Initial State
@@ -158,6 +170,8 @@ export const useStore = create<AppState>((set, get) => ({
   players: [],
   elapsedTime: 0,
   textGenerationRequestCounter: 0,
+  xpGainedThisRace: 0,
+  rankCounter: 1,
   
   socketStatus: 'disconnected',
   onlineRooms: [],
@@ -183,6 +197,7 @@ export const useStore = create<AppState>((set, get) => ({
   showAchievementsModal: false,
   showSettingsModal: false,
   showTutorialModal: false,
+  showCharacterModal: false,
   toasts: [],
 
   persistentPlayerStats: { totalRaces: 0, wins: 0, bestWpm: 0, avgWpm: 0, avgAccuracy: 0 },
@@ -190,6 +205,7 @@ export const useStore = create<AppState>((set, get) => ({
   leaderboard: getLeaderboard(),
   playerSettings: customizationService.getPlayerSettings(),
   unlockedCustomizations: customizationService.getUnlocked(),
+  playerCharacter: characterService.getCharacterData(),
 
   // Actions
   setGameState: (gameState) => {
@@ -198,14 +214,21 @@ export const useStore = create<AppState>((set, get) => ({
         get().resetLobby();
     }
   },
-  setPlayerName: (name) => {
+  setPlayerName: (name, color) => {
     const tutorialSeen = localStorage.getItem('gemini-type-racer-tutorial-seen') === 'true';
+
+    // Get the current character data, update color, then save
+    const currentCharacter = characterService.getCharacterData();
+    const updatedCharacter = { ...currentCharacter, color };
+    characterService.saveCharacterData(updatedCharacter);
 
     set({ 
         playerName: name, 
         gameState: GameState.LOBBY,
         showTutorialModal: !tutorialSeen,
         courseProgress: courseService.getCourseProgress(),
+        playerCharacter: updatedCharacter,
+        unlockedCustomizations: customizationService.getUnlocked(), // Also load customizations
     });
     
     const storedStats = localStorage.getItem('gemini-type-racer-stats');
@@ -214,6 +237,17 @@ export const useStore = create<AppState>((set, get) => ({
     }
     soundService.setSoundPack(get().playerSettings.activeSoundPackId); // Initialize sound pack
     get().connectToServer(); // Connect to WebSocket server
+  },
+  changeUser: () => {
+    get()._resetTypingHook();
+    set({
+      playerName: '',
+      gameState: GameState.NAME_SELECTION,
+      raceMode: null,
+      textToType: '',
+      players: [],
+      elapsedTime: 0,
+    });
   },
   setRaceMode: async (mode) => {
     set({ raceMode: mode, raceTheme: mode.startsWith('SOLO') ? get().raceTheme : null });
@@ -238,13 +272,12 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
   initializeGame: async () => {
-    const { playerName, raceMode, raceTheme, _resetTypingHook } = get();
+    const { playerName, raceMode, raceTheme, _resetTypingHook, playerCharacter } = get();
     if (!playerName || !raceMode) return;
     if (raceMode.startsWith('SOLO') && !raceTheme) return;
 
     _resetTypingHook();
-    rankCounter = 1;
-    set({ textToType: 'Loading passage...', currentLesson: null });
+    set({ textToType: 'Loading passage...', currentLesson: null, xpGainedThisRace: 0, rankCounter: 1 });
 
     const currentRequestId = get().textGenerationRequestCounter + 1;
     set({ textGenerationRequestCounter: currentRequestId });
@@ -253,19 +286,20 @@ export const useStore = create<AppState>((set, get) => ({
     
     let paragraph = '';
     let initialPlayers: Player[] = [
-        { id: PLAYER_ID, name: playerName, isPlayer: true, progress: 0, wpm: 0, accuracy: 100, wpmHistory: [] },
+        { id: PLAYER_ID, name: playerName, isPlayer: true, progress: 0, wpm: 0, accuracy: 100, wpmHistory: [], character: playerCharacter },
     ];
     
     if (raceMode === RaceMode.GHOST) {
         const ghostData: GhostData | null = JSON.parse(localStorage.getItem('gemini-type-racer-ghost') || 'null');
-        if (ghostData) {
-            paragraph = ' '.repeat(ghostData.textLength);
+        if (ghostData && ghostData.text) {
+            paragraph = ghostData.text;
             initialPlayers.push({
                 id: 'ghost-1', name: 'Your Best', isPlayer: false, isGhost: true, progress: 0, wpm: 0, accuracy: 100,
                 targetWpm: ghostData.finalWpm, wpmHistory: ghostData.wpmHistory,
             });
         } else {
-             set({textToType: "Could not load ghost data."}); return;
+             set({textToType: "Ghost data not found or is outdated. Please complete a race to set a new ghost.", raceMode: null}); 
+             return;
         }
     } else if (![RaceMode.PARTY, RaceMode.ONLINE_RACE, RaceMode.ENDURANCE, RaceMode.CUSTOM_TEXT, RaceMode.DAILY_CHALLENGE, RaceMode.COURSE].includes(raceMode)) {
          const fetchedParagraph = await getTypingParagraph(raceTheme!, raceMode);
@@ -275,9 +309,18 @@ export const useStore = create<AppState>((set, get) => ({
          const numBots = raceMode === RaceMode.PUBLIC ? 4 : 2;
          const botNamePool = [...BOT_NAMES].sort(() => 0.5 - Math.random());
          for(let i=0; i<numBots; i++) {
+            const botCharacter: PlayerCharacter = {
+                level: 1,
+                xp: 0,
+                xpToNextLevel: 100,
+                equippedItems: { hat: null, accessory: null },
+                color: BOT_COLORS[i % BOT_COLORS.length],
+                running: 1,
+            };
             initialPlayers.push({
                 id: `bot-${i}`, name: botNamePool[i], isPlayer: false, progress: 0, wpm: 0, accuracy: 98,
                 targetWpm: Math.floor(Math.random() * range) + baseWpm, mistakeCycles: 0,
+                character: botCharacter
             });
          }
     } else if (raceMode === RaceMode.PARTY) {
@@ -308,17 +351,10 @@ export const useStore = create<AppState>((set, get) => ({
 
         if (state.raceMode === RaceMode.ONLINE_RACE) {
             websocketService.sendMessage({ type: 'progressUpdate', progress: state.playerStats.progress, wpm: state.playerStats.wpm });
-            // FIX: Explicitly map properties for type safety and to avoid adding extra fields to the player object.
             return {
                 players: state.players.map(p =>
                     p.isPlayer
-                        ? {
-                              ...p,
-                              progress: state.playerStats.progress,
-                              wpm: state.playerStats.wpm,
-                              accuracy: state.playerStats.accuracy,
-                              wpmHistory: state.wpmHistory,
-                          }
+                        ? { ...p, progress: state.playerStats.progress, wpm: state.playerStats.wpm, accuracy: state.playerStats.accuracy, wpmHistory: state.wpmHistory }
                         : p
                 ),
             };
@@ -326,6 +362,7 @@ export const useStore = create<AppState>((set, get) => ({
 
         const botBehavior = getBotBehavior(state.raceMode);
         const playerProgress = state.playerStats.progress || 0;
+        let rank = state.rankCounter;
         
         const updatedPlayers = state.players.map(p => {
             if (p.isPlayer) {
@@ -359,87 +396,175 @@ export const useStore = create<AppState>((set, get) => ({
             }
 
             if (newProgress >= 100 && !p.rank) {
-              p.rank = rankCounter++;
+              p.rank = rank++;
               newProgress = 100;
             }
             return { ...p, progress: Math.min(100, newProgress), wpm: Math.round(currentWpm), isFallingBehind: p.isFallingBehind };
         });
 
-        return { players: updatedPlayers };
+        return { players: updatedPlayers, rankCounter: rank };
     });
   },
   endRace: () => {
-    if (get().gameState === GameState.RESULTS) return;
-    
-    if (get().raceMode === RaceMode.PARTY) {
+    const { gameState, raceMode } = get();
+    if (gameState === GameState.RESULTS) return;
+
+    if (raceMode === RaceMode.PARTY) {
         get().nextPartyTurn();
         return; 
     }
-    if (get().raceMode === RaceMode.ONLINE_RACE) {
+    if (raceMode === RaceMode.ONLINE_RACE) {
         const { playerStats } = get();
         websocketService.sendMessage({ type: 'raceFinished', wpm: playerStats.wpm, accuracy: playerStats.accuracy });
-    }
-    
-    if (get().raceMode === RaceMode.COURSE) {
-        const { currentLesson, playerStats, courseProgress, addToast } = get();
-        if (currentLesson) {
-            const passed = playerStats.wpm >= currentLesson.goals.wpm && playerStats.accuracy >= currentLesson.goals.accuracy;
-            if (passed) {
-                addToast({ message: "Lesson Complete!", type: 'success' });
-                const nextLessonId = currentLesson.id + 1;
-                if (nextLessonId > courseProgress && nextLessonId <= courseService.getTotalLessons()) {
-                    courseService.saveCourseProgress(nextLessonId);
-                    set({ courseProgress: nextLessonId });
-                }
-            } else {
-                addToast({ message: "Keep practicing!", type: 'info' });
-            }
-        }
-        set({ gameState: GameState.RESULTS });
+        // The server will send back playerFinished messages, we don't need to transition state here.
+        // We can just wait. A timeout could transition to results eventually. For now, this is okay.
         return;
     }
 
+    let newlyUnlocked: Achievement[] = [];
+    let playerResultForEffects: Player | undefined;
 
-    const { players, raceMode, raceTheme, persistentPlayerStats, addToast, playerStats } = get();
-    
-    let finalPlayers = [...players];
-    if (raceMode !== RaceMode.ONLINE_RACE) {
+    set(state => {
+        if (state.gameState !== GameState.TYPING) return state; // Prevent double execution
+
+        // Handle Course Mode first
+        if (state.raceMode === RaceMode.COURSE) {
+            const { currentLesson, playerStats, courseProgress } = state;
+            let newCourseProgress = courseProgress;
+            let xpGained = 0;
+            if (currentLesson) {
+                const passed = playerStats.wpm >= currentLesson.goals.wpm && playerStats.accuracy >= currentLesson.goals.accuracy;
+                if (passed) {
+                    xpGained = Math.round(currentLesson.goals.wpm * 1.2);
+                    const nextLessonId = currentLesson.id + 1;
+                    if (nextLessonId > courseProgress && nextLessonId <= courseService.getTotalLessons()) {
+                        courseService.saveCourseProgress(nextLessonId);
+                        newCourseProgress = nextLessonId;
+                    }
+                }
+            }
+            playerResultForEffects = state.players.find(p => p.isPlayer);
+            return {
+                ...state,
+                gameState: GameState.RESULTS,
+                courseProgress: newCourseProgress,
+                xpGainedThisRace: xpGained,
+            };
+        }
+
+        // Handle all other non-online/party modes
+        let players = [...state.players];
+        let player = players.find(p => p.isPlayer);
+        let newPersistentStats = state.persistentPlayerStats;
+        let rankCounter = state.rankCounter;
+        let xpGained = 0;
+        
+        if (player && !player.rank) {
+            player = { ...player, rank: rankCounter++ };
+            players = players.map(p => p.id === player.id ? player : p);
+        }
+        
+        playerResultForEffects = player; // Capture for side-effects
+
         const sortedByRank = [...players].filter(p => p.rank).sort((a, b) => a.rank! - b.rank!);
         const sortedByProgress = [...players].filter(p => !p.rank).sort((a,b) => b.progress - a.progress);
         
         let currentRank = sortedByRank.length;
-        finalPlayers = [...sortedByRank, ...sortedByProgress.map(p => ({...p, rank: ++currentRank}))];
-    }
+        const finalPlayers = [...sortedByRank, ...sortedByProgress.map(p => ({...p, rank: ++currentRank}))];
+        
+        if (player && state.raceMode) {
+            const { totalRaces, wins, avgWpm, avgAccuracy, bestWpm } = state.persistentPlayerStats;
+            const newTotalRaces = totalRaces + 1;
+            const newWins = wins + (player.rank === 1 ? 1 : 0);
+            const newAvgWpm = ((avgWpm * totalRaces) + state.playerStats.wpm) / newTotalRaces;
+            const newAvgAccuracy = ((avgAccuracy * totalRaces) + state.playerStats.accuracy) / newTotalRaces;
+            const newBestWpm = Math.max(bestWpm, state.playerStats.wpm);
+            
+            newPersistentStats = { totalRaces: newTotalRaces, wins: newWins, bestWpm: newBestWpm, avgWpm: Math.round(newAvgWpm), avgAccuracy: Math.round(newAvgAccuracy) };
+            localStorage.setItem('gemini-type-racer-stats', JSON.stringify(newPersistentStats));
 
-    set({ gameState: GameState.RESULTS, players: finalPlayers });
-    const playerResult = finalPlayers.find(p => p.isPlayer);
-    soundService.playRaceFinish(playerResult?.rank === 1);
-    
-    // FIX: Removed `&& raceTheme !== null` to correctly save stats for themeless modes like Endurance.
-    if (playerResult && raceMode) {
-        const newlyUnlocked = checkAndUnlockAchievements({ wpm: playerStats.wpm, accuracy: playerStats.accuracy, rank: playerResult.rank!, theme: raceTheme, mode: raceMode, stats: persistentPlayerStats });
-        newlyUnlocked.forEach(ach => {
-            addToast({ message: `Achievement: ${ach.name}`, type: 'success' });
-            if (ach.reward?.type === 'theme') {
-                if (customizationService.unlockTheme(ach.reward.id))
-                    addToast({ message: `Theme Unlocked: ${ach.reward.id}`, type: 'info' });
+            if (state.raceMode !== RaceMode.GHOST && state.playerStats.wpm >= newBestWpm) {
+                 const ghostData: GhostData = { wpmHistory: state.wpmHistory, finalWpm: state.playerStats.wpm, text: state.textToType };
+                 localStorage.setItem('gemini-type-racer-ghost', JSON.stringify(ghostData));
             }
-            if (ach.reward?.type === 'soundPack') {
-                if (customizationService.unlockSoundPack(ach.reward.id))
-                    addToast({ message: `Sound Pack Unlocked: ${ach.reward.id}`, type: 'info' });
-            }
-        });
 
-        if(raceMode !== RaceMode.GHOST) {
-            addLeaderboardEntry({ name: playerResult.name, wpm: playerStats.wpm, accuracy: playerStats.accuracy });
+            xpGained = Math.round(state.playerStats.wpm * 1.5 + state.playerStats.accuracy * 0.5 + (player.rank === 1 ? 50 : 0));
+
+            newlyUnlocked = checkAndUnlockAchievements({ 
+                wpm: state.playerStats.wpm, 
+                accuracy: state.playerStats.accuracy, 
+                rank: player.rank!, 
+                theme: state.raceTheme, 
+                mode: state.raceMode, 
+                stats: newPersistentStats,
+                level: state.playerCharacter.level,
+            });
         }
+
+        return {
+            ...state,
+            players: finalPlayers,
+            persistentPlayerStats: newPersistentStats,
+            gameState: GameState.RESULTS,
+            xpGainedThisRace: xpGained,
+        };
+    });
+
+    // --- Side-effects after state update ---
+
+    if (playerResultForEffects) {
+        soundService.playRaceFinish(playerResultForEffects.rank === 1);
     }
+    
+    const { xpGainedThisRace, addToast, playerStats } = get();
+    if (xpGainedThisRace > 0) {
+        get()._addXp(xpGainedThisRace);
+    }
+
+    newlyUnlocked.forEach(ach => {
+        addToast({ message: `Achievement: ${ach.name}`, type: 'success' });
+        if (ach.reward?.type === 'theme') {
+            if (customizationService.unlockTheme(ach.reward.id))
+                addToast({ message: `Theme Unlocked: ${ach.reward.id}`, type: 'info' });
+        }
+        if (ach.reward?.type === 'soundPack') {
+            if (customizationService.unlockSoundPack(ach.reward.id))
+                addToast({ message: `Sound Pack Unlocked: ${ach.reward.id}`, type: 'info' });
+        }
+        if (ach.reward?.type === 'characterItem') {
+            if(characterService.unlockItem(ach.reward.id)) {
+                 addToast({ message: `Cosmetic Unlocked!`, type: 'info' });
+            }
+        }
+    });
+
+    if (playerResultForEffects && raceMode && raceMode !== RaceMode.GHOST && raceMode !== RaceMode.COURSE) {
+        addLeaderboardEntry({ name: playerResultForEffects.name, wpm: playerStats.wpm, accuracy: playerStats.accuracy });
+    }
+
     set({ achievements: getAchievements(), leaderboard: getLeaderboard(), unlockedCustomizations: customizationService.getUnlocked() });
   },
   resetLobby: () => {
     get()._resetTypingHook();
     get().leaveOnlineRoom();
     set({ raceMode: null, textToType: '', players: [], elapsedTime: 0, partyPlayers: [], currentPartyPlayerIndex: 0, currentLesson: null });
+  },
+  _addXp: (amount) => {
+    const { playerCharacter, addToast } = get();
+    const { newCharacterState, leveledUp, unlockedItems } = characterService.addXp(playerCharacter, amount);
+    
+    characterService.saveCharacterData(newCharacterState);
+    set({ playerCharacter: newCharacterState });
+
+    if (leveledUp) {
+        addToast({ message: `Leveled up to Level ${newCharacterState.level}!`, type: 'success' });
+    }
+    unlockedItems.forEach(item => {
+        if(characterService.unlockItem(item.id)) {
+            addToast({ message: `Unlocked: ${item.name}`, type: 'info' });
+        }
+    });
+    set({ unlockedCustomizations: customizationService.getUnlocked() });
   },
   
   // Online Actions
@@ -452,16 +577,36 @@ export const useStore = create<AppState>((set, get) => ({
             set({ onlineRooms: message.rooms });
             break;
         case 'joinedRoom':
-            const players = message.room.players.map(p => ({
-                id: p.id,
-                name: p.name,
-                isPlayer: p.id === message.yourId, // Use server-authoritative ID
-                progress: 0, wpm: 0, accuracy: 100,
-            }));
+            const players = message.room.players.map((p, index) => {
+                const character: PlayerCharacter = {
+                    level: 1,
+                    xp: 0,
+                    xpToNextLevel: 100,
+                    equippedItems: { hat: null, accessory: null },
+                    color: BOT_COLORS[index % BOT_COLORS.length],
+                    running: 1,
+                };
+                const isMe = p.id === message.yourId;
+                return {
+                    id: p.id,
+                    name: p.name,
+                    isPlayer: isMe,
+                    progress: 0, wpm: 0, accuracy: 100,
+                    character: isMe ? get().playerCharacter : character,
+                };
+            });
             set({ currentRoomId: message.room.id, players, myId: message.yourId });
             break;
         case 'playerJoined':
-             set(state => ({ players: [...state.players, { id: message.player.id, name: message.player.name, isPlayer: false, progress: 0, wpm: 0, accuracy: 100}] }));
+             const newPlayerCharacter: PlayerCharacter = {
+                level: 1,
+                xp: 0,
+                xpToNextLevel: 100,
+                equippedItems: { hat: null, accessory: null },
+                color: BOT_COLORS[Math.floor(Math.random() * BOT_COLORS.length)],
+                running: 1,
+            };
+             set(state => ({ players: [...state.players, { id: message.player.id, name: message.player.name, isPlayer: false, progress: 0, wpm: 0, accuracy: 100, character: newPlayerCharacter}] }));
              break;
         case 'playerLeft':
              set(state => ({ players: state.players.filter(p => p.id !== message.playerId) }));
@@ -490,14 +635,15 @@ export const useStore = create<AppState>((set, get) => ({
             break;
         case 'dailyChallenge':
             get()._resetTypingHook();
-            rankCounter = 1;
             set(state => ({ 
                 textToType: message.text,
+                rankCounter: 1,
                 players: [{
                     id: PLAYER_ID, 
                     name: state.playerName, 
                     isPlayer: true, 
-                    progress: 0, wpm: 0, accuracy: 100, wpmHistory: []
+                    progress: 0, wpm: 0, accuracy: 100, wpmHistory: [],
+                    character: state.playerCharacter,
                 }]
             }));
             break;
@@ -516,21 +662,21 @@ export const useStore = create<AppState>((set, get) => ({
 
   startCustomTextGame: (text) => {
     if (!text.trim()) return;
-    set({ textToType: text.trim(), players: [{ id: PLAYER_ID, name: get().playerName, isPlayer: true, progress: 0, wpm: 0, accuracy: 100 }] });
+    set({ textToType: text.trim(), players: [{ id: PLAYER_ID, name: get().playerName, isPlayer: true, progress: 0, wpm: 0, accuracy: 100, character: get().playerCharacter }], rankCounter: 1 });
     get().startGame();
   },
 
   // Course Actions
   startCourseLesson: (lesson) => {
     get()._resetTypingHook();
-    rankCounter = 1;
     set({
       raceMode: RaceMode.COURSE,
       currentLesson: lesson,
       textToType: lesson.text,
-      players: [{ id: PLAYER_ID, name: get().playerName, isPlayer: true, progress: 0, wpm: 0, accuracy: 100 }],
+      players: [{ id: PLAYER_ID, name: get().playerName, isPlayer: true, progress: 0, wpm: 0, accuracy: 100, character: get().playerCharacter }],
       elapsedTime: 0,
       gameState: GameState.COUNTDOWN,
+      rankCounter: 1,
     });
   },
 
@@ -559,7 +705,7 @@ export const useStore = create<AppState>((set, get) => ({
     if (get().partyPlayers.length === 0) return;
     const firstPlayerName = get().partyPlayers[0].name;
     set({
-        players: [{ id: PLAYER_ID, name: firstPlayerName, isPlayer: true, progress: 0, wpm: 0, accuracy: 100 }],
+        players: [{ id: PLAYER_ID, name: firstPlayerName, isPlayer: true, progress: 0, wpm: 0, accuracy: 100, character: get().playerCharacter }],
         gameState: GameState.COUNTDOWN,
     });
   },
@@ -599,11 +745,24 @@ export const useStore = create<AppState>((set, get) => ({
     }));
   },
 
+  trainStat: (stat) => {
+    const { playerCharacter, addToast } = get();
+    const { newCharacterState, cost, success } = characterService.trainStat(playerCharacter, stat);
+    if (success) {
+        characterService.saveCharacterData(newCharacterState);
+        set({ playerCharacter: newCharacterState });
+        addToast({ message: `Trained ${stat}! Level ${newCharacterState[stat]}.`, type: 'success' });
+    } else {
+        addToast({ message: `Not enough XP! Need ${cost} XP.`, type: 'error' });
+    }
+  },
+
   toggleMute: () => set({ isMuted: soundService.toggleMute() }),
   setShowStatsModal: (show) => set({ showStatsModal: show }),
   setShowLeaderboardModal: (show) => set({ showLeaderboardModal: show }),
   setShowAchievementsModal: (show) => set({ showAchievementsModal: show }),
   setShowSettingsModal: (show) => set({ showSettingsModal: show }),
+  setShowCharacterModal: (show) => set({ showCharacterModal: show }),
   setShowTutorialModal: (show) => {
     set({ showTutorialModal: show });
     if (!show) {
@@ -620,6 +779,20 @@ export const useStore = create<AppState>((set, get) => ({
     customizationService.savePlayerSettings(newSettings);
     soundService.setSoundPack(packId);
     set({ playerSettings: newSettings });
+  },
+  equipItem: (itemId: string) => {
+    const { playerCharacter } = get();
+    const item = characterService.allCustomizationItems.find(i => i.id === itemId);
+    if (!item) return;
+
+    const newCharacter = { ...playerCharacter };
+    const currentlyEquippedId = newCharacter.equippedItems[item.type];
+    
+    // If clicking the same item, unequip it. Otherwise, equip the new one.
+    newCharacter.equippedItems[item.type] = currentlyEquippedId === itemId ? null : itemId;
+    
+    characterService.saveCharacterData(newCharacter);
+    set({ playerCharacter: newCharacter });
   },
   addToast: (toast) => {
     const id = Date.now().toString();

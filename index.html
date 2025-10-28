@@ -78,6 +78,74 @@
       .animate-slideOut {
         animation: slideOutToRight 0.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
       }
+      /* Duck Character Styles */
+      .duck-container {
+        position: relative;
+        width: 120px;
+        height: 120px;
+        margin: 0 auto;
+      }
+      .duck-container--small {
+        transform: scale(0.35);
+        transform-origin: top left;
+      }
+      .duck-body {
+        position: absolute;
+        width: 65px;
+        height: 65px;
+        border-radius: 50%;
+        bottom: 15px;
+        left: 50%;
+        transform: translateX(-65%);
+        border: 3px solid #94a3b8;
+        z-index: 5;
+      }
+      .duck-head {
+        position: absolute;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-20%);
+        border: 3px solid #94a3b8;
+        z-index: 10;
+      }
+      .duck-beak {
+        position: absolute;
+        width: 25px;
+        height: 15px;
+        background-color: #FFA500; /* Orange */
+        border-radius: 30% 70% 50% 50% / 50% 50% 50% 50%;
+        top: 40px;
+        left: 78%;
+        transform: translateX(-20%);
+        border: 2px solid #94a3b8;
+        z-index: 15;
+      }
+      .duck-eye {
+        position: absolute;
+        width: 8px;
+        height: 8px;
+        background-color: #94a3b8;
+        border-radius: 50%;
+        top: 35px;
+        left: 70%;
+        transform: translateX(-20%);
+        z-index: 15;
+      }
+      .duck-leg {
+        position: absolute;
+        width: 20px;
+        height: 25px;
+        bottom: 0px;
+        left: 50%;
+        transform: translateX(-90%);
+        border-left: 4px solid #94a3b8;
+        border-bottom: 4px solid #94a3b8;
+        border-bottom-left-radius: 4px;
+        z-index: 4;
+      }
     </style>
   <script type="importmap">
 {

@@ -18,6 +18,7 @@ const getDefaults = (): { customizations: UnlockedCustomizations, settings: Play
     customizations: {
         themes: ['default'],
         soundPacks: ['classic', 'scifi'], // Give scifi for free
+        characterItems: ['top_hat'], // Start with a default hat
     },
     settings: {
         activeThemeId: 'default',
@@ -30,7 +31,16 @@ export const customizationService = {
         try {
             const stored = localStorage.getItem(UNLOCKED_CUSTOMIZATIONS_KEY);
             const defaults = getDefaults().customizations;
-            return stored ? { ...defaults, ...JSON.parse(stored) } : defaults;
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                // Ensure all keys exist
+                return {
+                    themes: parsed.themes || defaults.themes,
+                    soundPacks: parsed.soundPacks || defaults.soundPacks,
+                    characterItems: parsed.characterItems || defaults.characterItems,
+                };
+            }
+            return defaults;
         } catch (e) {
             return getDefaults().customizations;
         }

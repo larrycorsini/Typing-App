@@ -2,7 +2,8 @@ import { useStore } from '../store';
 import { ClientToServerMessage, ServerToClientMessage } from '../types';
 
 let socket: WebSocket | null = null;
-let reconnectInterval: NodeJS.Timeout | null = null;
+// FIX: In a browser environment, setInterval returns a number, not a NodeJS.Timeout object.
+let reconnectInterval: number | null = null;
 let isAttemptingReconnect = false;
 
 const connect = () => {
@@ -43,7 +44,7 @@ const connect = () => {
         }
         socket = null;
         if (!reconnectInterval) {
-            reconnectInterval = setInterval(() => {
+            reconnectInterval = window.setInterval(() => {
                 if (!socket || socket.readyState === WebSocket.CLOSED) {
                     connect();
                 }

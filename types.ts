@@ -11,6 +11,7 @@ export enum GameState {
   ONLINE_LOBBY = 'ONLINE_LOBBY',
   CUSTOM_TEXT_SETUP = 'CUSTOM_TEXT_SETUP',
   COURSE_LOBBY = 'COURSE_LOBBY',
+  TRAINING_GROUND = 'TRAINING_GROUND',
 }
 
 export enum RaceMode {
@@ -50,6 +51,7 @@ export interface Player {
   accuracy: number;
   rank?: number;
   wpmHistory?: WpmDataPoint[];
+  character?: PlayerCharacter;
   // Bot-specific properties
   targetWpm?: number;
   isFallingBehind?: boolean;
@@ -74,10 +76,10 @@ export interface PartyPlayer {
 export interface GhostData {
   wpmHistory: WpmDataPoint[];
   finalWpm: number;
-  textLength: number;
+  text: string;
 }
 
-export type AchievementId = 'FIRST_RACE' | 'FIRST_WIN' | 'WPM_100' | 'PERFECT_ACCURACY' | 'ALL_THEMES' | 'ENDURANCE_MASTER' | 'DIY_RACER' | 'DAILY_RACER' | 'SOUND_MAESTRO';
+export type AchievementId = 'FIRST_RACE' | 'FIRST_WIN' | 'WPM_100' | 'PERFECT_ACCURACY' | 'ALL_THEMES' | 'ENDURANCE_MASTER' | 'DIY_RACER' | 'DAILY_RACER' | 'SOUND_MAESTRO' | 'LEVEL_5';
 
 export interface CustomizationTheme {
     id: 'default' | 'fiery';
@@ -97,6 +99,7 @@ export interface PlayerSettings {
 export interface UnlockedCustomizations {
     themes: CustomizationTheme['id'][];
     soundPacks: CustomizationSoundPack['id'][];
+    characterItems: string[];
 }
 
 export interface Achievement {
@@ -104,10 +107,10 @@ export interface Achievement {
   name: string;
   description: string;
   unlocked: boolean;
-  // FIX: Converted `reward` to a discriminated union to allow for correct type narrowing.
   reward?:
     | { type: 'theme'; id: CustomizationTheme['id'] }
-    | { type: 'soundPack'; id: CustomizationSoundPack['id'] };
+    | { type: 'soundPack'; id: CustomizationSoundPack['id'] }
+    | { type: 'characterItem'; id: string };
 }
 
 export interface LeaderboardEntry {
@@ -144,6 +147,26 @@ export interface CourseLesson {
 export interface CourseSection {
     title: string;
     lessons: CourseLesson[];
+}
+
+// Character Customization Types
+export interface CharacterCustomizationItem {
+  id: string;
+  name: string;
+  type: 'hat' | 'accessory';
+  emoji: string;
+}
+
+export interface PlayerCharacter {
+  level: number;
+  xp: number;
+  xpToNextLevel: number;
+  equippedItems: {
+    hat: string | null;
+    accessory: string | null;
+  };
+  color: string;
+  running: number;
 }
 
 // WebSocket Types

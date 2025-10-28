@@ -15,10 +15,10 @@ export const useTypingGame = (textToType: string, raceMode: RaceMode | null, isG
   const [wpmHistory, setWpmHistory] = useState<WpmDataPoint[]>([]);
 
   const startTimeRef = useRef<number | null>(null);
-  const correctCharsRef = useRef<number>(0);
   const lastHistoryPushTimeRef = useRef<number>(0);
   const mistypedCharsRef = useRef<Record<string, number>>({});
-  const enduranceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  // FIX: In a browser environment, setTimeout returns a number, not a NodeJS.Timeout object.
+  const enduranceTimerRef = useRef<number | null>(null);
 
   // The reset function no longer manages text. The store will provide new text.
   const reset = useCallback(() => {
@@ -28,7 +28,6 @@ export const useTypingGame = (textToType: string, raceMode: RaceMode | null, isG
     setIsFinished(false);
     setWpmHistory([]);
     startTimeRef.current = null;
-    correctCharsRef.current = 0;
     lastHistoryPushTimeRef.current = 0;
     mistypedCharsRef.current = {};
     if (enduranceTimerRef.current) clearTimeout(enduranceTimerRef.current);
@@ -42,11 +41,11 @@ export const useTypingGame = (textToType: string, raceMode: RaceMode | null, isG
   }, [isGameActive]);
 
   useEffect(() => {
-    // The finish condition now correctly depends on the prop `textToType`.
-    if (raceMode !== RaceMode.ENDURANCE && typed.length === textToType.length && errors.size === 0 && textToType.length > 0) {
+    // The race now ends when the player has typed the full length of the text, regardless of errors.
+    if (raceMode !== RaceMode.ENDURANCE && typed.length >= textToType.length && textToType.length > 0) {
       setIsFinished(true);
     }
-  }, [typed, textToType, errors, raceMode]);
+  }, [typed.length, textToType.length, raceMode]);
 
   const calculateStats = useCallback(() => {
     if (!startTimeRef.current) return;
@@ -55,12 +54,13 @@ export const useTypingGame = (textToType: string, raceMode: RaceMode | null, isG
     const elapsedTime = (now - startTimeRef.current) / 1000 / 60; // in minutes
     if (elapsedTime === 0) return;
     
-    const wpm = (correctCharsRef.current / 5) / elapsedTime;
     const typedChars = typed.length;
-    const totalChars = typedChars + errors.size;
-    const accuracy = totalChars > 0 ? (typedChars / totalChars) * 100 : 100;
-    // The progress calculation now correctly depends on the prop `textToType`.
-    const progress = (correctCharsRef.current / textToType.length) * 100;
+    const wpm = (typedChars / 5) / elapsedTime;
+    
+    const correctChars = typedChars - errors.size;
+    const accuracy = typedChars > 0 ? (correctChars / typedChars) * 100 : 100;
+    
+    const progress = (typedChars / textToType.length) * 100;
 
     const newStats: TypingStats = {
       wpm: Math.round(wpm),
@@ -82,7 +82,7 @@ export const useTypingGame = (textToType: string, raceMode: RaceMode | null, isG
       const interval = setInterval(calculateStats, 500);
       return () => clearInterval(interval);
     }
-  }, [isGameActive, typed, calculateStats]);
+  }, [isGameActive, typed.length, calculateStats]);
   
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (!isGameActive || isFinished) return;
@@ -93,7 +93,7 @@ export const useTypingGame = (textToType: string, raceMode: RaceMode | null, isG
         startTimeRef.current = Date.now();
         setWpmHistory([{ time: 0, wpm: 0, progress: 0 }]);
         if (raceMode === RaceMode.ENDURANCE) {
-            enduranceTimerRef.current = setTimeout(() => {
+            enduranceTimerRef.current = window.setTimeout(() => {
                 setIsFinished(true);
             }, ENDURANCE_DURATION_SECONDS * 1000);
         }
@@ -101,12 +101,12 @@ export const useTypingGame = (textToType: string, raceMode: RaceMode | null, isG
 
     if (key === 'Backspace') {
       e.preventDefault();
+      if (typed.length === 0) return;
+
       soundService.playKeyStroke(true); // Treat backspace as a "correction" sound
       const newErrors = new Set(errors);
       if (newErrors.has(typed.length - 1)) {
         newErrors.delete(typed.length - 1);
-      } else {
-        correctCharsRef.current = Math.max(0, correctCharsRef.current -1);
       }
       setErrors(newErrors);
       setTyped((prev) => prev.slice(0, -1));
@@ -116,9 +116,6 @@ export const useTypingGame = (textToType: string, raceMode: RaceMode | null, isG
       if (typed.length < textToType.length) {
         if (key === textToType[typed.length]) {
           soundService.playKeyStroke(false);
-          if (errors.size === 0) {
-            correctCharsRef.current += 1;
-          }
         } else {
           soundService.playKeyStroke(true);
           const wrongChar = textToType[typed.length];

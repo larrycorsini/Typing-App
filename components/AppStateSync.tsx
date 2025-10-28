@@ -1,28 +1,27 @@
 
+
 import React, { useEffect, useRef } from 'react';
 import { useStore } from '../store';
 import { useTypingGame } from '../hooks/useTypingGame';
-import { GameState, GhostData, PlayerStats, RaceMode } from '../types';
+import { GameState, RaceMode } from '../types';
 
-let gameLoopInterval: NodeJS.Timeout | null = null;
-let rankCounter = 1;
+let gameLoopInterval: number | null = null;
 
 export const AppStateSync: React.FC = () => {
     const state = useStore();
-    // The hook no longer returns `textToType`. It receives it as a one-way prop.
     const { typed, errors, stats, isFinished: hookIsFinished, reset, wpmHistory: hookWpmHistory } = useTypingGame(state.textToType, state.raceMode, state.gameState === GameState.TYPING);
+
+    const endRaceAction = useStore(s => s.endRace);
 
     useEffect(() => { useStore.setState({ _resetTypingHook: reset }); }, [reset]);
 
-    // This effect now correctly syncs only the state managed by the hook,
-    // breaking the infinite loop.
     useEffect(() => {
         state._setTypingHookState({ typed, errors, playerStats: stats, isFinished: hookIsFinished, wpmHistory: hookWpmHistory });
     }, [typed, errors, stats, hookIsFinished, hookWpmHistory, state._setTypingHookState]);
 
     useEffect(() => {
         if (state.gameState === GameState.TYPING) {
-            gameLoopInterval = setInterval(() => {
+            gameLoopInterval = window.setInterval(() => {
                 useStore.setState(s => ({ elapsedTime: s.elapsedTime + 1 }));
                 useStore.getState().updateGame(1);
             }, 1000);
@@ -35,37 +34,9 @@ export const AppStateSync: React.FC = () => {
     
     useEffect(() => {
         if (state.isFinished && state.gameState === GameState.TYPING) {
-            const currentState = useStore.getState();
-            const player = currentState.players.find(p => p.isPlayer);
-            
-            if(player && !player.rank && currentState.raceMode !== RaceMode.PARTY) {
-                // FIX: Avoid direct state mutation. Create new objects for immutability.
-                const rankedPlayer = { ...player, rank: rankCounter++ };
-                
-                useStore.setState(s => ({
-                    players: s.players.map(p => p.id === rankedPlayer.id ? rankedPlayer : p)
-                }));
-                
-                const { totalRaces, wins, avgWpm, avgAccuracy, bestWpm } = currentState.persistentPlayerStats;
-                const newTotalRaces = totalRaces + 1;
-                // Use the new, non-mutated object for calculations
-                const newWins = wins + (rankedPlayer.rank === 1 ? 1 : 0);
-                const newAvgWpm = ((avgWpm * totalRaces) + currentState.playerStats.wpm) / newTotalRaces;
-                const newAvgAccuracy = ((avgAccuracy * totalRaces) + currentState.playerStats.accuracy) / newTotalRaces;
-                const newBestWpm = Math.max(bestWpm, currentState.playerStats.wpm);
-                
-                const newStats: PlayerStats = { totalRaces: newTotalRaces, wins: newWins, bestWpm: newBestWpm, avgWpm: Math.round(newAvgWpm), avgAccuracy: Math.round(newAvgAccuracy) };
-                useStore.setState({ persistentPlayerStats: newStats });
-                localStorage.setItem('gemini-type-racer-stats', JSON.stringify(newStats));
-
-                if (currentState.playerStats.wpm >= bestWpm) {
-                     const ghostData: GhostData = { wpmHistory: currentState.wpmHistory, finalWpm: currentState.playerStats.wpm, textLength: currentState.textToType.length };
-                     localStorage.setItem('gemini-type-racer-ghost', JSON.stringify(ghostData));
-                }
-            }
-            useStore.getState().endRace();
+            endRaceAction();
         }
-    }, [state.isFinished, state.gameState]);
+    }, [state.isFinished, state.gameState, endRaceAction]);
 
     // Effect to handle socket errors safely within the React lifecycle
     const { socketStatus, gameState, raceMode, addToast, setGameState } = useStore(s => ({

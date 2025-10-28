@@ -38,11 +38,12 @@ const MistakeAnalysis: React.FC<{ mistypedChars: TypingStats['mistypedChars'] }>
 
 const ResultsModal: React.FC<ResultsModalProps> = ({ players, onPlayAgain }) => {
   const trapRef = useFocusTrap<HTMLDivElement>(onPlayAgain);
-  const { partyPlayers, raceMode, playerStats, currentLesson } = useStore(state => ({
+  const { partyPlayers, raceMode, playerStats, currentLesson, xpGainedThisRace } = useStore(state => ({
     partyPlayers: state.partyPlayers,
     raceMode: state.raceMode,
     playerStats: state.playerStats,
     currentLesson: state.currentLesson,
+    xpGainedThisRace: state.xpGainedThisRace,
   }));
   const isPartyMode = raceMode === RaceMode.PARTY;
   const isOnlineMode = raceMode === RaceMode.ONLINE_RACE;
@@ -81,6 +82,12 @@ const ResultsModal: React.FC<ResultsModalProps> = ({ players, onPlayAgain }) => 
         </h2>
         <p className="text-center text-slate-300 text-xl mb-6">{subtitle}</p>
         
+        {xpGainedThisRace > 0 && !isPartyMode && (
+          <div className="text-center mb-4 bg-slate-700/50 p-2 rounded-lg">
+            <p className="text-lg font-bold text-yellow-400">+ {xpGainedThisRace} XP</p>
+          </div>
+        )}
+
         {isCourseMode && currentLesson && (
           <div className="bg-slate-700/50 p-4 rounded-lg mb-4 text-center">
             <h4 className="font-bold text-slate-200">Lesson Goals</h4>

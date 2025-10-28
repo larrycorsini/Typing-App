@@ -1,5 +1,6 @@
 import React from 'react';
 import { Player } from '../types';
+import CharacterDisplay from './CharacterDisplay';
 
 interface PlayerCardProps {
   player: Player;
@@ -15,8 +16,21 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ player }) => {
     player.isGhost ? 'border-dashed border-purple-400' : '',
   ].join(' ');
 
+  const progressBgColor = isFinished 
+    ? 'bg-green-500' 
+    : player.isGhost 
+    ? 'bg-purple-500' 
+    : player.isPlayer
+    ? 'bg-cyan-500'
+    : 'bg-slate-500';
+
   const ariaLabel = `${player.name}${player.isPlayer ? ' (You)' : ''}${player.isGhost ? ' (Ghost)' : ''}: ${player.wpm} WPM, ${Math.round(player.progress)}% progress. ${isFinished ? 'Finished.' : ''}`;
   
+  // Apply a visual boost based on the running stat
+  const visualProgress = player.character?.running
+    ? Math.min(100, player.progress + (player.character.running / 5))
+    : player.progress;
+
   return (
     <div className={cardClasses} role="status" aria-live="polite" aria-label={ariaLabel}>
       <div className="flex justify-between items-center mb-2">
@@ -27,12 +41,28 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ player }) => {
           {player.wpm} WPM
         </span>
       </div>
-      <div className="w-full bg-slate-700 rounded-full h-4 overflow-hidden" aria-hidden="true">
+      
+      <div className="w-full bg-slate-700 rounded-full h-4 relative mt-2" aria-hidden="true">
         <div 
-          className={`h-4 rounded-full transition-all duration-300 ease-linear ${isFinished ? 'bg-green-500' : player.isGhost ? 'bg-purple-500' : 'bg-cyan-500'}`} 
-          style={{ width: `${player.progress}%` }}
+            className={`h-4 rounded-full transition-all duration-300 ease-linear ${progressBgColor}`}
+            style={{ width: `${player.progress}%` }}
         />
+        {player.character && !player.isGhost && (
+            <div
+                className="absolute transition-all duration-300 ease-linear"
+                style={{
+                    left: `${visualProgress}%`,
+                    top: '50%',
+                    width: '42px',
+                    height: '42px',
+                    transform: 'translate(-50%, -65%)'
+                }}
+            >
+                <CharacterDisplay character={player.character} size="small" />
+            </div>
+        )}
       </div>
+
     </div>
   );
 };

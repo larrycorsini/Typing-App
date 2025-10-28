@@ -13,6 +13,12 @@ const allAchievements: Omit<Achievement, 'unlocked'>[] = [
     },
     { id: 'PERFECT_ACCURACY', name: 'Flawless Victory', description: 'Finish a race with 100% accuracy.' },
     { id: 'ALL_THEMES', name: 'Globetrotter', description: 'Complete a race in every theme.' },
+    {
+      id: 'LEVEL_5',
+      name: 'Getting Serious',
+      description: 'Reach Level 5.',
+      reward: { type: 'characterItem', id: 'cowboy_hat' }
+    },
     { id: 'ENDURANCE_MASTER', name: 'Stamina King', description: 'Complete an Endurance mode race.' },
     { id: 'DIY_RACER', name: 'So... Meta', description: 'Complete a race using your own custom text.' },
     { id: 'DAILY_RACER', name: 'Consistency is Key', description: 'Complete the Daily Challenge.'},
@@ -54,6 +60,7 @@ interface RaceResultForAchievements {
     theme: RaceTheme | null;
     mode: RaceMode;
     stats: PlayerStats;
+    level: number;
 }
 
 // Store which themes have been played
@@ -99,6 +106,7 @@ export const checkAndUnlockAchievements = (result: RaceResultForAchievements): A
     check('PERFECT_ACCURACY', result.accuracy === 100);
     check('ALL_THEMES', Object.values(RaceTheme).every(theme => playedThemes.includes(theme)));
 
+    check('LEVEL_5', result.level >= 5);
     check('ENDURANCE_MASTER', result.mode === RaceMode.ENDURANCE);
     check('DIY_RACER', result.mode === RaceMode.CUSTOM_TEXT);
     check('DAILY_RACER', result.mode === RaceMode.DAILY_CHALLENGE);

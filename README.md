@@ -41,13 +41,28 @@ This project consists of a frontend (a build-less React app) and a backend (a No
 
 The backend server powers the Online Multiplayer and Daily Challenge modes.
 
-1.  **Install Dependencies**: Open a terminal in the project directory and run:
+1.  **Create `package.json`**: In the project's root directory, create a file named `package.json` with this content:
+    ```json
+    {
+      "name": "gemini-type-racer-server",
+      "version": "1.0.0",
+      "description": "Backend for Gemini Type Racer",
+      "main": "server.js",
+      "scripts": {
+        "start": "node server.js"
+      },
+      "dependencies": {
+        "ws": "^8.17.0"
+      }
+    }
+    ```
+
+2.  **Install Dependencies**: Open a terminal in the project directory and run:
     ```bash
-    Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
     npm install
     ```
 
-2.  **Start the Server**:
+3.  **Start the Server**:
     ```bash
     npm start
     ```
@@ -70,7 +85,6 @@ The frontend is a modern, build-less application. To run it locally, you need to
     -   Open a **new** terminal window in the same project directory.
     -   Run the following command to start a simple web server:
         ```bash
-        Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
         npx serve
         ```
     -   This command will give you a local URL, typically `http://localhost:3000`. Open this URL in your web browser.

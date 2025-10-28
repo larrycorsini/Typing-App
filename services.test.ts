@@ -1,4 +1,5 @@
 
+
 /**
  * @jest-environment jsdom
  */
@@ -47,43 +48,46 @@ beforeEach(() => {
 
 describe('achievementService', () => {
   const mockStats: PlayerStats = { totalRaces: 0, wins: 0, bestWpm: 0, avgWpm: 0, avgAccuracy: 0 };
+  const mockRaceResult = (overrides: Partial<Parameters<typeof checkAndUnlockAchievements>[0]>) => ({
+    wpm: 50, accuracy: 95, rank: 2, theme: RaceTheme.HARRY_POTTER, mode: RaceMode.SOLO_EASY, stats: mockStats, level: 1, ...overrides
+  });
 
   it('should unlock FIRST_RACE achievement on first race', () => {
-    const result = { wpm: 50, accuracy: 95, rank: 2, theme: RaceTheme.HARRY_POTTER, mode: RaceMode.SOLO_EASY, stats: mockStats };
+    const result = mockRaceResult({});
     const unlocked = checkAndUnlockAchievements(result);
     expect(unlocked.some(a => a.id === 'FIRST_RACE')).toBe(true);
   });
 
   it('should unlock FIRST_WIN achievement on first win', () => {
-    const result = { wpm: 80, accuracy: 98, rank: 1, theme: RaceTheme.MOVIE_QUOTES, mode: RaceMode.SOLO_MEDIUM, stats: mockStats };
+    const result = mockRaceResult({ rank: 1 });
     const unlocked = checkAndUnlockAchievements(result);
     expect(unlocked.some(a => a.id === 'FIRST_WIN')).toBe(true);
   });
   
   it('should not unlock FIRST_WIN if rank is not 1', () => {
-    const result = { wpm: 80, accuracy: 98, rank: 2, theme: RaceTheme.MOVIE_QUOTES, mode: RaceMode.SOLO_MEDIUM, stats: mockStats };
+    const result = mockRaceResult({ rank: 2 });
     const unlocked = checkAndUnlockAchievements(result);
     expect(unlocked.some(a => a.id === 'FIRST_WIN')).toBe(false);
   });
 
   it('should unlock WPM_100 achievement for high WPM', () => {
-    const result = { wpm: 105, accuracy: 99, rank: 1, theme: RaceTheme.CODE_SNIPPETS, mode: RaceMode.SOLO_HARD, stats: mockStats };
+    const result = mockRaceResult({ wpm: 105 });
     const unlocked = checkAndUnlockAchievements(result);
     expect(unlocked.some(a => a.id === 'WPM_100')).toBe(true);
   });
   
   it('should unlock PERFECT_ACCURACY achievement for 100% accuracy', () => {
-    const result = { wpm: 90, accuracy: 100, rank: 1, theme: RaceTheme.SONG_LYRICS, mode: RaceMode.SOLO_EASY, stats: mockStats };
+    const result = mockRaceResult({ accuracy: 100 });
     const unlocked = checkAndUnlockAchievements(result);
     expect(unlocked.some(a => a.id === 'PERFECT_ACCURACY')).toBe(true);
   });
   
   it('should not unlock achievements that are already unlocked', () => {
     // First race unlocks FIRST_RACE
-    checkAndUnlockAchievements({ wpm: 50, accuracy: 95, rank: 2, theme: RaceTheme.HARRY_POTTER, mode: RaceMode.SOLO_EASY, stats: mockStats });
+    checkAndUnlockAchievements(mockRaceResult({}));
     
     // Second race
-    const unlocked = checkAndUnlockAchievements({ wpm: 55, accuracy: 96, rank: 3, theme: RaceTheme.HARRY_POTTER, mode: RaceMode.SOLO_EASY, stats: mockStats });
+    const unlocked = checkAndUnlockAchievements(mockRaceResult({}));
     expect(unlocked.some(a => a.id === 'FIRST_RACE')).toBe(false); // Should not be in the "newly unlocked" list
   });
 });
