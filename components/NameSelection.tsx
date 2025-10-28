@@ -36,6 +36,8 @@ const NameSelection: React.FC<NameSelectionProps> = ({ onNameSubmit }) => {
       energy: 100,
       maxEnergy: 100,
       coins: 0,
+      // FIX: Add missing 'defeatedBosses' property to satisfy the PlayerCharacter interface.
+      defeatedBosses: [],
   };
 
   return (

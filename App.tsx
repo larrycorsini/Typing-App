@@ -12,6 +12,7 @@ import CustomTextSetup from './components/CustomTextSetup';
 import CourseLobby from './components/CourseLobby';
 import TrainingGround from './components/TrainingGround';
 import FeedingStation from './components/FeedingStation';
+import TournamentLobby from './components/TournamentLobby';
 import Lobby from './components/Lobby';
 
 const App: React.FC = () => {
@@ -51,6 +52,7 @@ const App: React.FC = () => {
       case GameState.CUSTOM_TEXT_SETUP: return <CustomTextSetup />;
       case GameState.TRAINING_GROUND: return <TrainingGround />;
       case GameState.FEEDING_STATION: return <FeedingStation />;
+      case GameState.TOURNAMENT_LOBBY: return <TournamentLobby />;
       case GameState.TYPING: case GameState.COUNTDOWN: return renderGame();
       default: return null;
     }

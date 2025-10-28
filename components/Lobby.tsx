@@ -85,6 +85,7 @@ const Lobby: React.FC = () => {
                         <div className="flex flex-col gap-3">
                             <button onClick={() => state.setGameState(GameState.TRAINING_GROUND)} className="btn btn-secondary">Training Ground</button>
                             <button onClick={() => state.setGameState(GameState.FEEDING_STATION)} className="btn btn-secondary">Feeding Station</button>
+                            <button onClick={() => state.setGameState(GameState.TOURNAMENT_LOBBY)} className="btn btn-secondary">Championship</button>
                         </div>
                     </div>
                 </div>

@@ -143,6 +143,7 @@ interface AppState {
   // Character Actions
   trainStat: (stat: 'running' | 'swimming' | 'flying') => void;
   feedDuck: (foodId: 'seed' | 'bread') => void;
+  startBossBattle: (bossId: string) => void;
 
   toggleMute: () => void;
   setShowStatsModal: (show: boolean) => void;
@@ -303,7 +304,7 @@ export const useStore = create<AppState>((set, get) => ({
              set({textToType: "Ghost data not found or is outdated. Please complete a race to set a new ghost.", raceMode: null}); 
              return;
         }
-    } else if (![RaceMode.PARTY, RaceMode.ONLINE_RACE, RaceMode.ENDURANCE, RaceMode.CUSTOM_TEXT, RaceMode.DAILY_CHALLENGE, RaceMode.COURSE].includes(raceMode)) {
+    } else if (![RaceMode.PARTY, RaceMode.ONLINE_RACE, RaceMode.ENDURANCE, RaceMode.CUSTOM_TEXT, RaceMode.DAILY_CHALLENGE, RaceMode.COURSE, RaceMode.BOSS_BATTLE].includes(raceMode)) {
          const fetchedParagraph = await getTypingParagraph(raceTheme!, raceMode);
          if (get().textGenerationRequestCounter !== currentRequestId) return;
          paragraph = fetchedParagraph;
@@ -383,12 +384,12 @@ export const useStore = create<AppState>((set, get) => ({
                 if (p.mistakeCycles && p.mistakeCycles > 0) {
                   return { ...p, mistakeCycles: p.mistakeCycles - 1 };
                 }
-                if (Math.random() < botBehavior.mistakeChance) {
+                if (state.raceMode !== RaceMode.BOSS_BATTLE && Math.random() < botBehavior.mistakeChance) {
                   return { ...p, mistakeCycles: botBehavior.mistakeDuration };
                 }
                 const isFallingBehind = !p.isPlayer && playerProgress > 10 && p.progress < playerProgress - 20;
                 const targetWpm = p.targetWpm || 60;
-                const randomFactor = (Math.random() - 0.5) * botBehavior.wpmFluctuation;
+                const randomFactor = (state.raceMode === RaceMode.BOSS_BATTLE) ? 0 : (Math.random() - 0.5) * botBehavior.wpmFluctuation;
                 const wpmBoost = isFallingBehind ? 15 : 0;
                 currentWpm = Math.max(20, targetWpm + randomFactor + wpmBoost);
                 const charsPerSecond = (currentWpm * 5) / 60;
@@ -422,6 +423,8 @@ export const useStore = create<AppState>((set, get) => ({
 
     let newlyUnlocked: Achievement[] = [];
     let playerResultForEffects: Player | undefined;
+    let wasBossDefeated = false;
+    let defeatedBossId: string | null = null;
 
     set(state => {
         if (state.gameState !== GameState.TYPING) return state;
@@ -456,6 +459,7 @@ export const useStore = create<AppState>((set, get) => ({
         let rankCounter = state.rankCounter;
         let xpGained = 0;
         let coinsGained = 0;
+        let finalCharacterState = state.playerCharacter;
         
         if (player && !player.rank) {
             player = { ...player, rank: rankCounter++ };
@@ -491,9 +495,27 @@ export const useStore = create<AppState>((set, get) => ({
             else if (player.rank === 2) coinsGained = 25;
             else if (player.rank === 3) coinsGained = 10;
             
-            const character = state.playerCharacter;
-            const updatedCharacter = { ...character, coins: character.coins + coinsGained, energy: Math.max(0, character.energy - RACE_ENERGY_COST)};
-            characterService.saveCharacterData(updatedCharacter);
+            if (state.raceMode === RaceMode.BOSS_BATTLE) {
+                const bossInRace = state.players.find(p => !p.isPlayer);
+                const playerWon = player.rank === 1;
+                if (playerWon && bossInRace && !state.playerCharacter.defeatedBosses.includes(bossInRace.id)) {
+                    wasBossDefeated = true;
+                    defeatedBossId = bossInRace.id;
+                    xpGained += 250;
+                    coinsGained += 150;
+                    finalCharacterState = {
+                        ...finalCharacterState,
+                        defeatedBosses: [...finalCharacterState.defeatedBosses, bossInRace.id],
+                    };
+                }
+            }
+
+            finalCharacterState = {
+                ...finalCharacterState,
+                coins: finalCharacterState.coins + coinsGained,
+                energy: Math.max(0, finalCharacterState.energy - RACE_ENERGY_COST)
+            };
+            characterService.saveCharacterData(finalCharacterState);
 
             newlyUnlocked = checkAndUnlockAchievements({ 
                 wpm: state.playerStats.wpm, 
@@ -502,7 +524,7 @@ export const useStore = create<AppState>((set, get) => ({
                 theme: state.raceTheme, 
                 mode: state.raceMode, 
                 stats: newPersistentStats,
-                level: updatedCharacter.level,
+                level: finalCharacterState.level,
             });
 
             return {
@@ -511,7 +533,7 @@ export const useStore = create<AppState>((set, get) => ({
                 gameState: GameState.RESULTS,
                 xpGainedThisRace: xpGained,
                 coinsGainedThisRace: coinsGained,
-                playerCharacter: updatedCharacter,
+                playerCharacter: finalCharacterState,
             };
         }
         return { ...state };
@@ -524,6 +546,12 @@ export const useStore = create<AppState>((set, get) => ({
     const { xpGainedThisRace, addToast, playerStats } = get();
     if (xpGainedThisRace > 0) {
         get()._addXp(xpGainedThisRace);
+    }
+
+    if (wasBossDefeated && defeatedBossId === 'champion') {
+        if(characterService.unlockItem('championship_crown')) {
+            addToast({ message: 'Championship Crown Unlocked!', type: 'success' });
+        }
     }
 
     newlyUnlocked.forEach(ach => {
@@ -543,7 +571,7 @@ export const useStore = create<AppState>((set, get) => ({
         }
     });
 
-    if (playerResultForEffects && raceMode && raceMode !== RaceMode.GHOST && raceMode !== RaceMode.COURSE) {
+    if (playerResultForEffects && raceMode && ![RaceMode.GHOST, RaceMode.COURSE, RaceMode.BOSS_BATTLE].includes(raceMode)) {
         addLeaderboardEntry({ name: playerResultForEffects.name, wpm: playerStats.wpm, accuracy: playerStats.accuracy });
     }
 
@@ -759,6 +787,46 @@ export const useStore = create<AppState>((set, get) => ({
         addToast({ message, type: 'error' });
     }
   },
+  startBossBattle: async (bossId: string) => {
+    const { playerCharacter, addToast, _resetTypingHook } = get();
+    const boss = characterService.bosses.find(b => b.id === bossId);
+    if (!boss) return;
+
+    // Check skill requirements
+    if (playerCharacter.running < boss.skillRequirements.running ||
+        playerCharacter.swimming < boss.skillRequirements.swimming ||
+        playerCharacter.flying < boss.skillRequirements.flying) {
+        addToast({ message: 'Your skills are not high enough to challenge this boss!', type: 'error' });
+        return;
+    }
+    
+    // Check energy
+    if (playerCharacter.energy < RACE_ENERGY_COST) {
+        addToast({ message: "Not enough energy to race!", type: 'error' });
+        return;
+    }
+
+    _resetTypingHook();
+    set({ textToType: 'Loading passage...', raceMode: RaceMode.BOSS_BATTLE, rankCounter: 1 });
+
+    const paragraph = await getTypingParagraph(RaceTheme.MOVIE_QUOTES, RaceMode.SOLO_MEDIUM);
+
+    const players: Player[] = [
+        { id: PLAYER_ID, name: get().playerName, isPlayer: true, progress: 0, wpm: 0, accuracy: 100, wpmHistory: [], character: playerCharacter },
+        { 
+            id: boss.id, 
+            name: boss.name, 
+            isPlayer: false, 
+            progress: 0, wpm: 0, accuracy: 99,
+            targetWpm: boss.wpm,
+            character: boss.character,
+        },
+    ];
+
+    set({ players, textToType: paragraph });
+    get().startGame(); // This will move to countdown
+  },
+
 
   toggleMute: () => set({ isMuted: soundService.toggleMute() }),
   setShowStatsModal: (show) => set({ showStatsModal: show }),

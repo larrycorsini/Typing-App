@@ -1,4 +1,4 @@
-import { PlayerCharacter, CharacterCustomizationItem } from '../types';
+import { PlayerCharacter, CharacterCustomizationItem, Boss } from '../types';
 import { customizationService } from './customizationService';
 
 const CHARACTER_DATA_KEY = 'gemini-type-racer-character';
@@ -16,6 +16,7 @@ export const allCustomizationItems: CharacterCustomizationItem[] = [
     { id: 'crown', name: 'Crown', type: 'hat', emoji: '👑' },
     { id: 'cowboy_hat', name: 'Cowboy Hat', type: 'hat', emoji: '🤠' },
     { id: 'grad_cap', name: 'Graduation Cap', type: 'hat', emoji: '🎓' },
+    { id: 'championship_crown', name: 'Championship Crown', type: 'hat', emoji: '👑' },
     { id: 'sunglasses', name: 'Sunglasses', type: 'accessory', emoji: '🕶️' },
     { id: 'scarf', name: 'Scarf', type: 'accessory', emoji: '🧣' },
     { id: 'tie', name: 'Tie', type: 'accessory', emoji: '👔' },
@@ -52,12 +53,46 @@ const getDefaultCharacter = (): PlayerCharacter => ({
     energy: 100,
     maxEnergy: 100,
     coins: 0,
+    defeatedBosses: [],
 });
+
+export const bosses: Boss[] = [
+  {
+    id: 'paddles',
+    name: 'Paddles',
+    wpm: 40,
+    skillRequirements: { running: 5, swimming: 1, flying: 1 },
+    character: { ...getDefaultCharacter(), color: '#a1a1aa', equippedItems: { hat: null, accessory: null } },
+  },
+  {
+    id: 'quackmire',
+    name: 'Quackmire',
+    wpm: 65,
+    skillRequirements: { running: 10, swimming: 10, flying: 1 },
+    character: { ...getDefaultCharacter(), color: '#22c55e', equippedItems: { hat: null, accessory: 'scarf' } },
+  },
+  {
+    id: 'aeroduck',
+    name: 'AeroDuck',
+    wpm: 85,
+    skillRequirements: { running: 15, swimming: 15, flying: 15 },
+    character: { ...getDefaultCharacter(), color: '#3b82f6', equippedItems: { hat: null, accessory: 'sunglasses' } },
+  },
+  {
+    id: 'champion',
+    name: 'The Champion',
+    wpm: 110,
+    skillRequirements: { running: 25, swimming: 25, flying: 25 },
+    character: { ...getDefaultCharacter(), color: '#f59e0b', equippedItems: { hat: 'crown', accessory: null } },
+  },
+];
+
 
 export const characterService = {
     allCustomizationItems,
     levelUnlocks,
     foodItems,
+    bosses,
     // FIX: Export getDefaultCharacter so it can be used in the store.
     getDefaultCharacter,
 

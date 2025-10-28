@@ -13,6 +13,7 @@ export enum GameState {
   COURSE_LOBBY = 'COURSE_LOBBY',
   TRAINING_GROUND = 'TRAINING_GROUND',
   FEEDING_STATION = 'FEEDING_STATION',
+  TOURNAMENT_LOBBY = 'TOURNAMENT_LOBBY',
 }
 
 export enum RaceMode {
@@ -27,6 +28,7 @@ export enum RaceMode {
   CUSTOM_TEXT = 'CUSTOM_TEXT',
   DAILY_CHALLENGE = 'DAILY_CHALLENGE',
   COURSE = 'COURSE',
+  BOSS_BATTLE = 'BOSS_BATTLE',
 }
 
 export enum RaceTheme {
@@ -173,6 +175,19 @@ export interface PlayerCharacter {
   energy: number;
   maxEnergy: number;
   coins: number;
+  defeatedBosses: string[];
+}
+
+export interface Boss {
+  id: string;
+  name: string;
+  wpm: number;
+  character: PlayerCharacter;
+  skillRequirements: {
+    running: number;
+    swimming: number;
+    flying: number;
+  };
 }
 
 // WebSocket Types
