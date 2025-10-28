@@ -118,7 +118,7 @@ const ResultsModal: React.FC<ResultsModalProps> = ({ players, onPlayAgain }) => 
 
         <button 
           onClick={onPlayAgain}
-          className="w-full bg-cyan-500 text-slate-900 font-bold py-3 px-6 rounded-lg text-xl hover:bg-cyan-400 focus:outline-none focus:ring-4 focus:ring-cyan-300/50 transition-all duration-300 transform hover:scale-105 mt-8"
+          className="w-full btn btn-primary text-xl py-3 mt-8"
         >
           {isPartyMode ? 'New Game' : isCourseMode ? 'Back to Course' : 'Back to Lobby'}
         </button>
