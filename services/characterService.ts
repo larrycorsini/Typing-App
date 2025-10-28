@@ -3,6 +3,14 @@ import { customizationService } from './customizationService';
 
 const CHARACTER_DATA_KEY = 'gemini-type-racer-character';
 
+export const RACE_ENERGY_COST = 25;
+export const TRAIN_ENERGY_COST = 20;
+
+const foodItems = {
+    seed: { cost: 10, energy: 25 },
+    bread: { cost: 30, energy: 75 },
+};
+
 export const allCustomizationItems: CharacterCustomizationItem[] = [
     { id: 'top_hat', name: 'Top Hat', type: 'hat', emoji: '🎩' },
     { id: 'crown', name: 'Crown', type: 'hat', emoji: '👑' },
@@ -39,11 +47,19 @@ const getDefaultCharacter = (): PlayerCharacter => ({
     },
     color: '#FFD700', // Default color: gold
     running: 1,
+    swimming: 1,
+    flying: 1,
+    energy: 100,
+    maxEnergy: 100,
+    coins: 0,
 });
 
 export const characterService = {
     allCustomizationItems,
     levelUnlocks,
+    foodItems,
+    // FIX: Export getDefaultCharacter so it can be used in the store.
+    getDefaultCharacter,
 
     getCharacterData: (): PlayerCharacter => {
         try {
@@ -69,7 +85,6 @@ export const characterService = {
         
         unlocked.characterItems.push(itemId);
         const { themes, soundPacks, characterItems } = unlocked;
-        // Save the entire object back
         localStorage.setItem('gemini-type-racer-unlocked-customizations', JSON.stringify({ themes, soundPacks, characterItems }));
         return true;
     },
@@ -104,18 +119,39 @@ export const characterService = {
         return Math.floor(25 * Math.pow(statLevel, 1.5));
     },
 
-    trainStat: (character: PlayerCharacter, stat: 'running'): { newCharacterState: PlayerCharacter, cost: number, success: boolean } => {
-        const cost = characterService.getTrainingCost(character[stat]);
-        if (character.xp < cost) {
-            return { newCharacterState: character, cost, success: false };
+    trainStat: (character: PlayerCharacter, stat: 'running' | 'swimming' | 'flying'): { newCharacterState: PlayerCharacter, message: string, success: boolean } => {
+        const xpCost = characterService.getTrainingCost(character[stat]);
+        
+        if (character.energy < TRAIN_ENERGY_COST) {
+            return { newCharacterState: character, message: `Not enough energy! Need ${TRAIN_ENERGY_COST} energy.`, success: false };
+        }
+        if (character.xp < xpCost) {
+            return { newCharacterState: character, message: `Not enough XP! Need ${xpCost} XP.`, success: false };
         }
 
         const newCharacterState = {
             ...character,
-            xp: character.xp - cost,
+            xp: character.xp - xpCost,
+            energy: character.energy - TRAIN_ENERGY_COST,
             [stat]: character[stat] + 1,
         };
 
-        return { newCharacterState, cost, success: true };
+        return { newCharacterState, message: 'Training successful!', success: true };
+    },
+
+    feedDuck: (character: PlayerCharacter, foodId: 'seed' | 'bread'): { newCharacterState: PlayerCharacter, message: string, success: boolean } => {
+        const food = foodItems[foodId];
+        if (character.coins < food.cost) {
+            return { newCharacterState: character, message: `Not enough coins! Need ${food.cost}.`, success: false };
+        }
+
+        const newEnergy = Math.min(character.maxEnergy, character.energy + food.energy);
+        const newCharacterState = {
+            ...character,
+            coins: character.coins - food.cost,
+            energy: newEnergy,
+        };
+        
+        return { newCharacterState, message: `Restored ${food.energy} energy!`, success: true };
     },
 };

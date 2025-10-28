@@ -30,8 +30,12 @@ const NameSelection: React.FC<NameSelectionProps> = ({ onNameSubmit }) => {
       xpToNextLevel: 100,
       equippedItems: { hat: null, accessory: null },
       color: color,
-      // FIX: Add missing 'running' property to conform to PlayerCharacter type.
       running: 1,
+      swimming: 1,
+      flying: 1,
+      energy: 100,
+      maxEnergy: 100,
+      coins: 0,
   };
 
   return (

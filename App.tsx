@@ -23,6 +23,8 @@ import CourseLobby from './components/CourseLobby';
 import CharacterDisplay from './components/CharacterDisplay';
 import CharacterCustomizationModal from './components/CharacterCustomizationModal';
 import TrainingGround from './components/TrainingGround';
+import FeedingStation from './components/FeedingStation';
+import { RACE_ENERGY_COST } from './services/characterService';
 
 const App: React.FC = () => {
   const state = useStore();
@@ -53,7 +55,9 @@ const App: React.FC = () => {
   const renderLobby = () => {
     const { playerCharacter } = state;
     const xpPercentage = (playerCharacter.xp / playerCharacter.xpToNextLevel) * 100;
+    const energyPercentage = (playerCharacter.energy / playerCharacter.maxEnergy) * 100;
     const isConnecting = state.socketStatus === 'connecting' || state.socketStatus === 'disconnected';
+    const hasEnoughEnergy = playerCharacter.energy >= RACE_ENERGY_COST;
 
     return (
         <div className="text-center w-full max-w-4xl">
@@ -66,12 +70,25 @@ const App: React.FC = () => {
                     <button onClick={() => state.changeUser()} className="bg-red-600 hover:bg-red-500 text-white font-semibold py-2 px-4 rounded-lg transition-colors">Change User</button>
                 </div>
             </div>
+            
+            <div className="grid grid-cols-3 items-center mb-4">
+                <div className="text-left">
+                    <div className="font-bold text-lg text-amber-400">Coins: {playerCharacter.coins} 🪙</div>
+                </div>
 
-            <div className="relative inline-block mb-4">
-                <CharacterDisplay character={playerCharacter} />
-                 <button onClick={() => state.setShowCharacterModal(true)} className="absolute -bottom-2 -right-4 bg-slate-700 hover:bg-slate-600 text-white font-bold w-10 h-10 rounded-full text-xl transition-colors border-2 border-slate-600">
-                    ✏️
-                </button>
+                <div className="relative inline-block">
+                    <CharacterDisplay character={playerCharacter} />
+                    <button onClick={() => state.setShowCharacterModal(true)} className="absolute -bottom-2 -right-4 bg-slate-700 hover:bg-slate-600 text-white font-bold w-10 h-10 rounded-full text-xl transition-colors border-2 border-slate-600">
+                        ✏️
+                    </button>
+                </div>
+
+                <div className="text-right">
+                     <div className="font-bold text-lg text-green-400">Energy: {playerCharacter.energy}/{playerCharacter.maxEnergy}⚡</div>
+                     <div className="w-full h-3 bg-slate-700 rounded-full mt-1 overflow-hidden border border-slate-600">
+                        <div className="bg-green-500 h-full rounded-full transition-all duration-500" style={{ width: `${energyPercentage}%` }}></div>
+                    </div>
+                </div>
             </div>
             
             <h1 className="text-4xl md:text-5xl font-bold text-[rgb(var(--color-accent-primary))]">Welcome, {state.playerName}!</h1>
@@ -103,6 +120,7 @@ const App: React.FC = () => {
             <div className="mb-8">
                 <h3 className="text-xl text-[rgb(var(--color-text-primary))] font-bold mb-3" id="practice-label">Practice & Challenges</h3>
                 <div className="flex flex-wrap justify-center gap-3">
+                    <button onClick={() => state.setGameState(GameState.FEEDING_STATION)} className={`font-bold py-2 px-5 rounded-lg text-lg transition-colors border-2 border-amber-500 hover:bg-amber-500/20 text-amber-400`}>Feed Duck</button>
                     <button onClick={() => state.setGameState(GameState.TRAINING_GROUND)} className={`font-bold py-2 px-5 rounded-lg text-lg transition-colors border-2 border-yellow-500 hover:bg-yellow-500/20 text-yellow-400`}>Training</button>
                     <button onClick={() => state.setGameState(GameState.COURSE_LOBBY)} className={`font-bold py-2 px-5 rounded-lg text-lg transition-colors border-2 border-orange-500 hover:bg-orange-500/20 text-orange-400`}>Typing Course</button>
                     <button onClick={() => state.setRaceMode(RaceMode.ENDURANCE)} className={`font-bold py-2 px-5 rounded-lg text-lg transition-colors border-2 ${state.raceMode === RaceMode.ENDURANCE ? 'bg-indigo-500 border-indigo-500 text-white' : 'border-[rgb(var(--color-border))] hover:bg-slate-700'}`}>Endurance (60s)</button>
@@ -129,8 +147,8 @@ const App: React.FC = () => {
                 {state.textToType || 'Select a mode to generate a passage...'}
                 </p>
             </div>
-            <button onClick={state.startGame} disabled={!state.raceMode || (state.raceMode.startsWith('SOLO') && !state.raceTheme) || state.textToType.startsWith('Loading')} className="bg-[rgb(var(--color-accent-secondary))] text-[rgb(var(--color-accent-text))] font-bold py-4 px-8 rounded-lg text-2xl hover:bg-[rgb(var(--color-accent-primary))] focus:outline-none focus:ring-4 focus:ring-[rgba(var(--color-accent-primary),0.5)] transition-all duration-300 disabled:bg-slate-600 disabled:cursor-not-allowed transform hover:scale-105">
-                Start Race
+            <button onClick={state.startGame} disabled={!state.raceMode || !hasEnoughEnergy || (state.raceMode.startsWith('SOLO') && !state.raceTheme) || state.textToType.startsWith('Loading')} className="bg-[rgb(var(--color-accent-secondary))] text-[rgb(var(--color-accent-text))] font-bold py-4 px-8 rounded-lg text-2xl hover:bg-[rgb(var(--color-accent-primary))] focus:outline-none focus:ring-4 focus:ring-[rgba(var(--color-accent-primary),0.5)] transition-all duration-300 disabled:bg-slate-600 disabled:cursor-not-allowed transform hover:scale-105">
+                {!hasEnoughEnergy ? `Not Enough Energy (${RACE_ENERGY_COST})` : 'Start Race'}
             </button>
         </div>
     );
@@ -159,6 +177,7 @@ const App: React.FC = () => {
       case GameState.PARTY_TRANSITION: return <PartyTransition />;
       case GameState.CUSTOM_TEXT_SETUP: return <CustomTextSetup />;
       case GameState.TRAINING_GROUND: return <TrainingGround />;
+      case GameState.FEEDING_STATION: return <FeedingStation />;
       case GameState.TYPING: case GameState.COUNTDOWN: return renderGame();
       default: return null;
     }

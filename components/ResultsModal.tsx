@@ -38,12 +38,13 @@ const MistakeAnalysis: React.FC<{ mistypedChars: TypingStats['mistypedChars'] }>
 
 const ResultsModal: React.FC<ResultsModalProps> = ({ players, onPlayAgain }) => {
   const trapRef = useFocusTrap<HTMLDivElement>(onPlayAgain);
-  const { partyPlayers, raceMode, playerStats, currentLesson, xpGainedThisRace } = useStore(state => ({
+  const { partyPlayers, raceMode, playerStats, currentLesson, xpGainedThisRace, coinsGainedThisRace } = useStore(state => ({
     partyPlayers: state.partyPlayers,
     raceMode: state.raceMode,
     playerStats: state.playerStats,
     currentLesson: state.currentLesson,
     xpGainedThisRace: state.xpGainedThisRace,
+    coinsGainedThisRace: state.coinsGainedThisRace,
   }));
   const isPartyMode = raceMode === RaceMode.PARTY;
   const isOnlineMode = raceMode === RaceMode.ONLINE_RACE;
@@ -82,9 +83,10 @@ const ResultsModal: React.FC<ResultsModalProps> = ({ players, onPlayAgain }) => 
         </h2>
         <p className="text-center text-slate-300 text-xl mb-6">{subtitle}</p>
         
-        {xpGainedThisRace > 0 && !isPartyMode && (
-          <div className="text-center mb-4 bg-slate-700/50 p-2 rounded-lg">
-            <p className="text-lg font-bold text-yellow-400">+ {xpGainedThisRace} XP</p>
+        {!isPartyMode && (xpGainedThisRace > 0 || coinsGainedThisRace > 0) && (
+          <div className="text-center mb-4 bg-slate-700/50 p-2 rounded-lg flex justify-center gap-8">
+            {xpGainedThisRace > 0 && <p className="text-lg font-bold text-yellow-400">+ {xpGainedThisRace} XP</p>}
+            {coinsGainedThisRace > 0 && <p className="text-lg font-bold text-amber-400">+ {coinsGainedThisRace} Coins 🪙</p>}
           </div>
         )}
 

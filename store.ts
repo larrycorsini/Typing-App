@@ -7,7 +7,7 @@ import { getLeaderboard, addLeaderboardEntry } from './services/leaderboardServi
 import { customizationService } from './services/customizationService';
 import { websocketService } from './services/websocketService';
 import { courseService } from './services/courseService';
-import { characterService } from './services/characterService';
+import { characterService, RACE_ENERGY_COST } from './services/characterService';
 
 const BOT_NAMES = ['RacerX', 'Speedy', 'KeyMaster', 'TypoBot', 'CodeCrusher', 'LyricLover', 'QuoteQueen', 'GhostRider', 'PixelPusher', 'ByteBlaster'];
 const PLAYER_ID = 'player-1';
@@ -62,6 +62,7 @@ interface AppState {
   elapsedTime: number;
   textGenerationRequestCounter: number;
   xpGainedThisRace: number;
+  coinsGainedThisRace: number;
   rankCounter: number;
 
   // Online Race State
@@ -139,8 +140,9 @@ interface AppState {
   nextPartyTurn: () => void;
   prepareNextPartyTurn: () => void;
 
-  // Character Training
-  trainStat: (stat: 'running') => void;
+  // Character Actions
+  trainStat: (stat: 'running' | 'swimming' | 'flying') => void;
+  feedDuck: (foodId: 'seed' | 'bread') => void;
 
   toggleMute: () => void;
   setShowStatsModal: (show: boolean) => void;
@@ -171,6 +173,7 @@ export const useStore = create<AppState>((set, get) => ({
   elapsedTime: 0,
   textGenerationRequestCounter: 0,
   xpGainedThisRace: 0,
+  coinsGainedThisRace: 0,
   rankCounter: 1,
   
   socketStatus: 'disconnected',
@@ -217,7 +220,6 @@ export const useStore = create<AppState>((set, get) => ({
   setPlayerName: (name, color) => {
     const tutorialSeen = localStorage.getItem('gemini-type-racer-tutorial-seen') === 'true';
 
-    // Get the current character data, update color, then save
     const currentCharacter = characterService.getCharacterData();
     const updatedCharacter = { ...currentCharacter, color };
     characterService.saveCharacterData(updatedCharacter);
@@ -228,15 +230,15 @@ export const useStore = create<AppState>((set, get) => ({
         showTutorialModal: !tutorialSeen,
         courseProgress: courseService.getCourseProgress(),
         playerCharacter: updatedCharacter,
-        unlockedCustomizations: customizationService.getUnlocked(), // Also load customizations
+        unlockedCustomizations: customizationService.getUnlocked(),
     });
     
     const storedStats = localStorage.getItem('gemini-type-racer-stats');
     if(storedStats) {
         set({ persistentPlayerStats: JSON.parse(storedStats) });
     }
-    soundService.setSoundPack(get().playerSettings.activeSoundPackId); // Initialize sound pack
-    get().connectToServer(); // Connect to WebSocket server
+    soundService.setSoundPack(get().playerSettings.activeSoundPackId);
+    get().connectToServer();
   },
   changeUser: () => {
     get()._resetTypingHook();
@@ -277,7 +279,7 @@ export const useStore = create<AppState>((set, get) => ({
     if (raceMode.startsWith('SOLO') && !raceTheme) return;
 
     _resetTypingHook();
-    set({ textToType: 'Loading passage...', currentLesson: null, xpGainedThisRace: 0, rankCounter: 1 });
+    set({ textToType: 'Loading passage...', currentLesson: null, xpGainedThisRace: 0, coinsGainedThisRace: 0, rankCounter: 1 });
 
     const currentRequestId = get().textGenerationRequestCounter + 1;
     set({ textGenerationRequestCounter: currentRequestId });
@@ -309,14 +311,9 @@ export const useStore = create<AppState>((set, get) => ({
          const numBots = raceMode === RaceMode.PUBLIC ? 4 : 2;
          const botNamePool = [...BOT_NAMES].sort(() => 0.5 - Math.random());
          for(let i=0; i<numBots; i++) {
-            const botCharacter: PlayerCharacter = {
-                level: 1,
-                xp: 0,
-                xpToNextLevel: 100,
-                equippedItems: { hat: null, accessory: null },
-                color: BOT_COLORS[i % BOT_COLORS.length],
-                running: 1,
-            };
+            const botCharacter = characterService.getDefaultCharacter();
+            botCharacter.color = BOT_COLORS[i % BOT_COLORS.length];
+
             initialPlayers.push({
                 id: `bot-${i}`, name: botNamePool[i], isPlayer: false, progress: 0, wpm: 0, accuracy: 98,
                 targetWpm: Math.floor(Math.random() * range) + baseWpm, mistakeCycles: 0,
@@ -324,7 +321,7 @@ export const useStore = create<AppState>((set, get) => ({
             });
          }
     } else if (raceMode === RaceMode.PARTY) {
-        const fetchedParagraph = await getTypingParagraph(RaceTheme.HARRY_POTTER, RaceMode.SOLO_MEDIUM); // Party mode uses medium text
+        const fetchedParagraph = await getTypingParagraph(RaceTheme.HARRY_POTTER, RaceMode.SOLO_MEDIUM);
         if (get().textGenerationRequestCounter !== currentRequestId) return;
         paragraph = fetchedParagraph;
     } else if (raceMode === RaceMode.ENDURANCE) {
@@ -334,10 +331,14 @@ export const useStore = create<AppState>((set, get) => ({
     set({ players: initialPlayers, textToType: paragraph });
   },
   startGame: () => {
-    const { textToType, raceMode } = get();
+    const { textToType, raceMode, playerCharacter, addToast } = get();
+    if (playerCharacter.energy < RACE_ENERGY_COST) {
+        addToast({ message: "Not enough energy to race!", type: 'error'});
+        return;
+    }
     if (textToType && !textToType.startsWith('Loading')) {
        if (raceMode === RaceMode.ONLINE_RACE) {
-            set({ gameState: GameState.COUNTDOWN }); // Server dictates start, but client shows countdown for feel
+            set({ gameState: GameState.COUNTDOWN });
        } else {
            set({ elapsedTime: 0, gameState: GameState.COUNTDOWN });
        }
@@ -416,8 +417,6 @@ export const useStore = create<AppState>((set, get) => ({
     if (raceMode === RaceMode.ONLINE_RACE) {
         const { playerStats } = get();
         websocketService.sendMessage({ type: 'raceFinished', wpm: playerStats.wpm, accuracy: playerStats.accuracy });
-        // The server will send back playerFinished messages, we don't need to transition state here.
-        // We can just wait. A timeout could transition to results eventually. For now, this is okay.
         return;
     }
 
@@ -425,9 +424,8 @@ export const useStore = create<AppState>((set, get) => ({
     let playerResultForEffects: Player | undefined;
 
     set(state => {
-        if (state.gameState !== GameState.TYPING) return state; // Prevent double execution
+        if (state.gameState !== GameState.TYPING) return state;
 
-        // Handle Course Mode first
         if (state.raceMode === RaceMode.COURSE) {
             const { currentLesson, playerStats, courseProgress } = state;
             let newCourseProgress = courseProgress;
@@ -452,19 +450,19 @@ export const useStore = create<AppState>((set, get) => ({
             };
         }
 
-        // Handle all other non-online/party modes
         let players = [...state.players];
         let player = players.find(p => p.isPlayer);
         let newPersistentStats = state.persistentPlayerStats;
         let rankCounter = state.rankCounter;
         let xpGained = 0;
+        let coinsGained = 0;
         
         if (player && !player.rank) {
             player = { ...player, rank: rankCounter++ };
             players = players.map(p => p.id === player.id ? player : p);
         }
         
-        playerResultForEffects = player; // Capture for side-effects
+        playerResultForEffects = player;
 
         const sortedByRank = [...players].filter(p => p.rank).sort((a, b) => a.rank! - b.rank!);
         const sortedByProgress = [...players].filter(p => !p.rank).sort((a,b) => b.progress - a.progress);
@@ -489,6 +487,13 @@ export const useStore = create<AppState>((set, get) => ({
             }
 
             xpGained = Math.round(state.playerStats.wpm * 1.5 + state.playerStats.accuracy * 0.5 + (player.rank === 1 ? 50 : 0));
+            if (player.rank === 1) coinsGained = 50;
+            else if (player.rank === 2) coinsGained = 25;
+            else if (player.rank === 3) coinsGained = 10;
+            
+            const character = state.playerCharacter;
+            const updatedCharacter = { ...character, coins: character.coins + coinsGained, energy: Math.max(0, character.energy - RACE_ENERGY_COST)};
+            characterService.saveCharacterData(updatedCharacter);
 
             newlyUnlocked = checkAndUnlockAchievements({ 
                 wpm: state.playerStats.wpm, 
@@ -497,20 +502,20 @@ export const useStore = create<AppState>((set, get) => ({
                 theme: state.raceTheme, 
                 mode: state.raceMode, 
                 stats: newPersistentStats,
-                level: state.playerCharacter.level,
+                level: updatedCharacter.level,
             });
+
+            return {
+                players: finalPlayers,
+                persistentPlayerStats: newPersistentStats,
+                gameState: GameState.RESULTS,
+                xpGainedThisRace: xpGained,
+                coinsGainedThisRace: coinsGained,
+                playerCharacter: updatedCharacter,
+            };
         }
-
-        return {
-            ...state,
-            players: finalPlayers,
-            persistentPlayerStats: newPersistentStats,
-            gameState: GameState.RESULTS,
-            xpGainedThisRace: xpGained,
-        };
+        return { ...state };
     });
-
-    // --- Side-effects after state update ---
 
     if (playerResultForEffects) {
         soundService.playRaceFinish(playerResultForEffects.rank === 1);
@@ -577,15 +582,9 @@ export const useStore = create<AppState>((set, get) => ({
             set({ onlineRooms: message.rooms });
             break;
         case 'joinedRoom':
-            const players = message.room.players.map((p, index) => {
-                const character: PlayerCharacter = {
-                    level: 1,
-                    xp: 0,
-                    xpToNextLevel: 100,
-                    equippedItems: { hat: null, accessory: null },
-                    color: BOT_COLORS[index % BOT_COLORS.length],
-                    running: 1,
-                };
+            const players = message.room.players.map((p) => {
+                const character = characterService.getDefaultCharacter();
+                character.color = BOT_COLORS[Math.floor(Math.random() * BOT_COLORS.length)];
                 const isMe = p.id === message.yourId;
                 return {
                     id: p.id,
@@ -598,14 +597,8 @@ export const useStore = create<AppState>((set, get) => ({
             set({ currentRoomId: message.room.id, players, myId: message.yourId });
             break;
         case 'playerJoined':
-             const newPlayerCharacter: PlayerCharacter = {
-                level: 1,
-                xp: 0,
-                xpToNextLevel: 100,
-                equippedItems: { hat: null, accessory: null },
-                color: BOT_COLORS[Math.floor(Math.random() * BOT_COLORS.length)],
-                running: 1,
-            };
+             const newPlayerCharacter = characterService.getDefaultCharacter();
+             newPlayerCharacter.color = BOT_COLORS[Math.floor(Math.random() * BOT_COLORS.length)];
              set(state => ({ players: [...state.players, { id: message.player.id, name: message.player.name, isPlayer: false, progress: 0, wpm: 0, accuracy: 100, character: newPlayerCharacter}] }));
              break;
         case 'playerLeft':
@@ -656,7 +649,6 @@ export const useStore = create<AppState>((set, get) => ({
   createOnlineRoom: () => websocketService.sendMessage({ type: 'createRoom', playerName: get().playerName }),
   joinOnlineRoom: (roomId) => websocketService.sendMessage({ type: 'joinRoom', roomId, playerName: get().playerName }),
   leaveOnlineRoom: () => {
-    // Implement leave room message if needed, for now handled by disconnect
     set({ currentRoomId: null, players: [], myId: null });
   },
 
@@ -747,13 +739,24 @@ export const useStore = create<AppState>((set, get) => ({
 
   trainStat: (stat) => {
     const { playerCharacter, addToast } = get();
-    const { newCharacterState, cost, success } = characterService.trainStat(playerCharacter, stat);
+    const { newCharacterState, success, message } = characterService.trainStat(playerCharacter, stat);
     if (success) {
         characterService.saveCharacterData(newCharacterState);
         set({ playerCharacter: newCharacterState });
         addToast({ message: `Trained ${stat}! Level ${newCharacterState[stat]}.`, type: 'success' });
     } else {
-        addToast({ message: `Not enough XP! Need ${cost} XP.`, type: 'error' });
+        addToast({ message, type: 'error' });
+    }
+  },
+  feedDuck: (foodId) => {
+    const { playerCharacter, addToast } = get();
+    const { newCharacterState, success, message } = characterService.feedDuck(playerCharacter, foodId);
+    if (success) {
+        characterService.saveCharacterData(newCharacterState);
+        set({ playerCharacter: newCharacterState });
+        addToast({ message, type: 'success' });
+    } else {
+        addToast({ message, type: 'error' });
     }
   },
 
@@ -788,7 +791,6 @@ export const useStore = create<AppState>((set, get) => ({
     const newCharacter = { ...playerCharacter };
     const currentlyEquippedId = newCharacter.equippedItems[item.type];
     
-    // If clicking the same item, unequip it. Otherwise, equip the new one.
     newCharacter.equippedItems[item.type] = currentlyEquippedId === itemId ? null : itemId;
     
     characterService.saveCharacterData(newCharacter);

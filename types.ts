@@ -12,6 +12,7 @@ export enum GameState {
   CUSTOM_TEXT_SETUP = 'CUSTOM_TEXT_SETUP',
   COURSE_LOBBY = 'COURSE_LOBBY',
   TRAINING_GROUND = 'TRAINING_GROUND',
+  FEEDING_STATION = 'FEEDING_STATION',
 }
 
 export enum RaceMode {
@@ -167,6 +168,11 @@ export interface PlayerCharacter {
   };
   color: string;
   running: number;
+  swimming: number;
+  flying: number;
+  energy: number;
+  maxEnergy: number;
+  coins: number;
 }
 
 // WebSocket Types

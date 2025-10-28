@@ -2,9 +2,20 @@ import React from 'react';
 import { Player } from '../types';
 import CharacterDisplay from './CharacterDisplay';
 
+// Fix: Define the missing PlayerCardProps interface.
 interface PlayerCardProps {
   player: Player;
 }
+
+const WATER_HAZARD_START = 40; // a percentage
+const WATER_HAZARD_END = 60;
+const MAX_SWIM_SLOWDOWN = 0.7; // 70% speed reduction at level 1
+const SWIM_SKILL_EFFECTIVENESS = 0.05; // Each level reduces slowdown
+
+const HURDLE_START = 80;
+const HURDLE_END = 82;
+const MAX_FLYING_SLOWDOWN = 0.9; // A very high slowdown for low level
+const FLYING_SKILL_EFFECTIVENESS = 0.08; // Each level reduces slowdown
 
 const PlayerCard: React.FC<PlayerCardProps> = ({ player }) => {
   const isFinished = player.progress >= 100;
@@ -26,10 +37,52 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ player }) => {
 
   const ariaLabel = `${player.name}${player.isPlayer ? ' (You)' : ''}${player.isGhost ? ' (Ghost)' : ''}: ${player.wpm} WPM, ${Math.round(player.progress)}% progress. ${isFinished ? 'Finished.' : ''}`;
   
-  // Apply a visual boost based on the running stat
-  const visualProgress = player.character?.running
-    ? Math.min(100, player.progress + (player.character.running / 5))
-    : player.progress;
+  const calculateVisualProgress = () => {
+    const baseProgress = player.progress;
+    const runningBoost = player.character?.running ? (player.character.running / 5) : 0;
+    let visualProgress = baseProgress + runningBoost;
+
+    // Apply water hazard slowdown
+    if (player.character && baseProgress > WATER_HAZARD_START && baseProgress < WATER_HAZARD_END) {
+        const swimmingLevel = player.character.swimming || 1;
+        const slowdownFactor = Math.max(0, MAX_SWIM_SLOWDOWN - (swimmingLevel - 1) * SWIM_SKILL_EFFECTIVENESS);
+        const progressInWater = baseProgress - WATER_HAZARD_START;
+        const slowedProgressInWater = progressInWater * (1 - slowdownFactor);
+        
+        visualProgress = WATER_HAZARD_START + runningBoost + slowedProgressInWater;
+    } else if (player.character && baseProgress >= WATER_HAZARD_END) {
+        const swimmingLevel = player.character.swimming || 1;
+        const slowdownFactor = Math.max(0, MAX_SWIM_SLOWDOWN - (swimmingLevel - 1) * SWIM_SKILL_EFFECTIVENESS);
+        const waterSectionLength = WATER_HAZARD_END - WATER_HAZARD_START;
+        const effectiveWaterLength = waterSectionLength * (1 - slowdownFactor);
+        const penalty = waterSectionLength - effectiveWaterLength;
+        
+        visualProgress = baseProgress + runningBoost - penalty;
+    }
+
+    // Apply hurdle slowdown
+    if (player.character && visualProgress > HURDLE_START && visualProgress < HURDLE_END) {
+        const flyingLevel = player.character.flying || 1;
+        const slowdownFactor = Math.max(0, MAX_FLYING_SLOWDOWN - (flyingLevel - 1) * FLYING_SKILL_EFFECTIVENESS);
+        const progressInHurdle = visualProgress - HURDLE_START;
+        const slowedProgressInHurdle = progressInHurdle * (1 - slowdownFactor);
+
+        visualProgress = HURDLE_START + slowedProgressInHurdle;
+
+    } else if (player.character && visualProgress >= HURDLE_END) {
+        const flyingLevel = player.character.flying || 1;
+        const slowdownFactor = Math.max(0, MAX_FLYING_SLOWDOWN - (flyingLevel - 1) * FLYING_SKILL_EFFECTIVENESS);
+        const hurdleSectionLength = HURDLE_END - HURDLE_START;
+        const effectiveHurdleLength = hurdleSectionLength * (1 - slowdownFactor);
+        const penalty = hurdleSectionLength - effectiveHurdleLength;
+
+        visualProgress -= penalty;
+    }
+    
+    return Math.min(100, visualProgress);
+  };
+
+  const visualProgress = calculateVisualProgress();
 
   return (
     <div className={cardClasses} role="status" aria-live="polite" aria-label={ariaLabel}>
@@ -42,11 +95,25 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ player }) => {
         </span>
       </div>
       
-      <div className="w-full bg-slate-700 rounded-full h-4 relative mt-2" aria-hidden="true">
+      <div className="w-full bg-slate-700 rounded-full h-4 relative mt-2 overflow-hidden" aria-hidden="true">
+        {/* Water Hazard */}
+        <div 
+            className="absolute h-full bg-blue-500/50"
+            style={{ left: `${WATER_HAZARD_START}%`, width: `${WATER_HAZARD_END - WATER_HAZARD_START}%` }}
+        />
+        {/* Hurdle */}
+        <div
+            className="absolute h-full bg-yellow-800/80 border-y-2 border-yellow-600"
+            style={{ left: `${HURDLE_START}%`, width: `${HURDLE_END - HURDLE_START}%`}}
+        />
+        
+        {/* Progress Bar */}
         <div 
             className={`h-4 rounded-full transition-all duration-300 ease-linear ${progressBgColor}`}
             style={{ width: `${player.progress}%` }}
         />
+        
+        {/* Duck Character */}
         {player.character && !player.isGhost && (
             <div
                 className="absolute transition-all duration-300 ease-linear"
