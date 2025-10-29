@@ -9,7 +9,6 @@ const allAchievements: Omit<Achievement, 'unlocked'>[] = [
       id: 'WPM_100', 
       name: 'Need for Speed', 
       description: 'Achieve a WPM of 100 or more.',
-      reward: { type: 'theme', id: 'fiery' }
     },
     { id: 'PERFECT_ACCURACY', name: 'Flawless Victory', description: 'Finish a race with 100% accuracy.' },
     { id: 'ALL_THEMES', name: 'Globetrotter', description: 'Complete a race in every theme.' },
@@ -32,7 +31,6 @@ const allAchievements: Omit<Achievement, 'unlocked'>[] = [
         id: 'CHAMPION',
         name: 'Keyboard King',
         description: 'Defeat the final Champion and assemble the Golden Keyboard.',
-        reward: { type: 'theme', id: 'golden_keyboard'}
     }
 ];
 

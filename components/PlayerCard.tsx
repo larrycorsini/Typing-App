@@ -21,8 +21,8 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ player }) => {
   const isFinished = player.progress >= 100;
   
   const cardClasses = [
-    'p-4 rounded-lg shadow-md transition-all duration-300 border-2',
-    player.isPlayer ? 'bg-cyan-900/50 border-cyan-400' : 'bg-slate-800 border-transparent',
+    'p-4 rounded-xl shadow-md transition-all duration-300 border-4 border-[var(--dl-text)]',
+    player.isPlayer ? 'bg-[#fefae0]' : 'bg-[#fffbe6]',
     player.isFallingBehind ? 'animate-subtleGlow !border-red-500/80' : '',
     player.isGhost ? 'border-dashed border-purple-400' : '',
   ].join(' ');
@@ -32,7 +32,7 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ player }) => {
     : player.isGhost 
     ? 'bg-purple-500' 
     : player.isPlayer
-    ? 'bg-cyan-500'
+    ? 'bg-[var(--dl-yellow)]'
     : 'bg-slate-500';
 
   const ariaLabel = `${player.name}${player.isPlayer ? ' (You)' : ''}${player.isGhost ? ' (Ghost)' : ''}: ${player.wpm} WPM, ${Math.round(player.progress)}% progress. ${isFinished ? 'Finished.' : ''}`;
@@ -92,29 +92,29 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ player }) => {
   return (
     <div className={cardClasses} role="status" aria-live="polite" aria-label={ariaLabel}>
       <div className="flex justify-between items-center mb-2">
-        <span className={`font-bold text-lg truncate pr-2 ${player.isPlayer ? 'text-cyan-300' : player.isGhost ? 'text-purple-300' : 'text-slate-300'}`}>
+        <span className={`font-bold text-lg truncate pr-2 ${player.isPlayer ? 'text-[var(--dl-text)]' : player.isGhost ? 'text-purple-600' : 'text-slate-700'}`}>
           {player.rank && `#${player.rank} `}{player.name} {player.isPlayer && '(You)'} {player.isGhost && '(Ghost)'}
         </span>
-        <span className={`text-xl font-bold ${isFinished ? 'text-green-400' : player.isGhost ? 'text-purple-300' : 'text-cyan-400'}`}>
+        <span className={`text-xl font-bold ${isFinished ? 'text-green-600' : player.isGhost ? 'text-purple-500' : 'text-[var(--dl-text)]'}`}>
           {player.wpm} WPM
         </span>
       </div>
       
-      <div className="w-full bg-slate-700 rounded-full h-4 relative mt-2 overflow-hidden" aria-hidden="true">
+      <div className="w-full dl-progress-bar relative mt-2 overflow-hidden" aria-hidden="true">
         {/* Water Hazard */}
         <div 
-            className="absolute h-full bg-blue-500/50"
+            className="absolute h-full dl-progress-bar__water"
             style={{ left: `${WATER_HAZARD_START}%`, width: `${WATER_HAZARD_END - WATER_HAZARD_START}%` }}
         />
         {/* Hurdle */}
         <div
-            className="absolute h-full bg-yellow-800/80 border-y-2 border-yellow-600"
+            className="absolute h-full dl-progress-bar__hurdle"
             style={{ left: `${HURDLE_START}%`, width: `${HURDLE_END - HURDLE_START}%`}}
         />
         
         {/* Progress Bar */}
         <div 
-            className={`h-4 rounded-full transition-all duration-300 ease-linear ${progressBgColor}`}
+            className={`h-full rounded-full transition-all duration-300 ease-linear ${progressBgColor}`}
             style={{ width: `${player.progress}%` }}
         />
         

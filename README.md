@@ -9,6 +9,7 @@ Welcome to Gemini Type Racer, a modern, feature-rich typing game where you can t
 
 ## ✨ Features
 
+- **Charming "Duck Life" Visuals**: A complete visual overhaul inspired by the classic Duck Life games, featuring a bright, cartoony art style, bubbly fonts, and a cheerful, playful interface.
 - **Duck Evolutions**: Choose your specialty! Select an Athletic, Stamina, or Intellect duck at the start, each with unique stats and abilities that affect your racing style.
 - **Real-Time Online Multiplayer**: Join a public lobby, create a room, and race against players from around the world. Your progress is updated character-by-character for a thrilling, competitive experience.
 - **Dynamic Content via Gemini API**: Never type the same thing twice! Choose from various themes, and the Gemini API will generate a unique paragraph for you.
@@ -21,7 +22,7 @@ Welcome to Gemini Type Racer, a modern, feature-rich typing game where you can t
     - **Custom Text Mode**: Paste in your own text to practice with anything you want.
     - **Daily Challenge**: Compete on a unique, daily paragraph that is the same for everyone.
 - **Player Customization**:
-    - **UI Themes**: Unlock cosmetic UI themes by earning achievements.
+    - **Cosmetic Items**: Unlock and equip fun cosmetic items like hats and accessories for your duck by leveling up and earning achievements.
     - **Sound Packs**: Unlock and equip different typing sound profiles (Classic, Sci-Fi, Mechanical) for a personalized audio experience.
 - **Advanced Race Analysis**: Get actionable feedback after each race with an analysis of your most frequently mistyped characters.
 - **Persistent Player Stats**: Your performance is saved locally. Track your total races, wins, win rate, best WPM, and average WPM/accuracy over time.

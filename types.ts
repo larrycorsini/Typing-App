@@ -94,23 +94,16 @@ export interface GhostData {
 
 export type AchievementId = 'FIRST_RACE' | 'FIRST_WIN' | 'WPM_100' | 'PERFECT_ACCURACY' | 'ALL_THEMES' | 'ENDURANCE_MASTER' | 'DIY_RACER' | 'DAILY_RACER' | 'SOUND_MAESTRO' | 'LEVEL_5' | 'CHAMPION';
 
-export interface CustomizationTheme {
-    id: 'default' | 'fiery' | 'golden_keyboard';
-    name: string;
-}
-
 export interface CustomizationSoundPack {
     id: 'classic' | 'scifi' | 'mechanical';
     name: string;
 }
 
 export interface PlayerSettings {
-    activeThemeId: CustomizationTheme['id'];
     activeSoundPackId: CustomizationSoundPack['id'];
 }
 
 export interface UnlockedCustomizations {
-    themes: CustomizationTheme['id'][];
     soundPacks: CustomizationSoundPack['id'][];
     characterItems: string[];
 }
@@ -121,7 +114,6 @@ export interface Achievement {
   description: string;
   unlocked: boolean;
   reward?:
-    | { type: 'theme'; id: CustomizationTheme['id'] }
     | { type: 'soundPack'; id: CustomizationSoundPack['id'] }
     | { type: 'characterItem'; id: string };
 }

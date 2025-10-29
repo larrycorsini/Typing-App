@@ -1,13 +1,7 @@
-import { CustomizationTheme, PlayerSettings, UnlockedCustomizations, CustomizationSoundPack } from '../types';
+import { PlayerSettings, UnlockedCustomizations, CustomizationSoundPack } from '../types';
 
 const UNLOCKED_CUSTOMIZATIONS_KEY = 'gemini-type-racer-unlocked-customizations';
 const PLAYER_SETTINGS_KEY = 'gemini-type-racer-player-settings';
-
-export const allThemes: CustomizationTheme[] = [
-    { id: 'default', name: 'Default Dark' },
-    { id: 'fiery', name: 'Fiery Orange' },
-    { id: 'golden_keyboard', name: 'Golden Keyboard' },
-];
 
 export const allSoundPacks: CustomizationSoundPack[] = [
     { id: 'classic', name: 'Classic' },
@@ -17,12 +11,10 @@ export const allSoundPacks: CustomizationSoundPack[] = [
 
 const getDefaults = (): { customizations: UnlockedCustomizations, settings: PlayerSettings } => ({
     customizations: {
-        themes: ['default'],
         soundPacks: ['classic', 'scifi'], // Give scifi for free
         characterItems: [], 
     },
     settings: {
-        activeThemeId: 'default',
         activeSoundPackId: 'classic',
     }
 });
@@ -36,7 +28,6 @@ export const customizationService = {
                 const parsed = JSON.parse(stored);
                 // Ensure all keys exist
                 return {
-                    themes: parsed.themes || defaults.themes,
                     soundPacks: parsed.soundPacks || defaults.soundPacks,
                     characterItems: parsed.characterItems || defaults.characterItems,
                 };
@@ -45,14 +36,6 @@ export const customizationService = {
         } catch (e) {
             return getDefaults().customizations;
         }
-    },
-
-    unlockTheme: (themeId: CustomizationTheme['id']): boolean => {
-        const unlocked = customizationService.getUnlocked();
-        if (unlocked.themes.includes(themeId)) return false;
-        unlocked.themes.push(themeId);
-        localStorage.setItem(UNLOCKED_CUSTOMIZATIONS_KEY, JSON.stringify(unlocked));
-        return true;
     },
 
     unlockSoundPack: (packId: CustomizationSoundPack['id']): boolean => {

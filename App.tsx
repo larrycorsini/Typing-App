@@ -21,10 +21,6 @@ import TrainingFlying from './components/TrainingFlying';
 const App: React.FC = () => {
   const state = useStore();
   
-  useEffect(() => {
-    document.body.setAttribute('data-theme', state.playerSettings.activeThemeId);
-  }, [state.playerSettings.activeThemeId]);
-
   const formatTime = (time: number) => {
     const minutes = Math.floor(time / 60).toString().padStart(2, '0');
     const seconds = (time % 60).toString().padStart(2, '0');
@@ -33,9 +29,9 @@ const App: React.FC = () => {
 
   const renderGame = () => (
     <>
-      <div className="absolute top-4 right-4 text-center bg-[rgba(var(--color-bg-secondary),0.8)] backdrop-blur-sm p-2 px-4 rounded-lg shadow-md border border-[rgb(var(--color-border))]">
-        <span className="text-[rgb(var(--color-text-secondary))] text-xs font-semibold uppercase tracking-widest">Time</span>
-        <p className="text-[rgb(var(--color-accent-primary))] text-3xl font-bold font-mono" aria-live="off">{formatTime(state.elapsedTime)}</p>
+      <div className="absolute top-4 right-4 text-center bg-[var(--dl-panel-bg)] p-2 px-4 rounded-lg shadow-md border-2 border-[var(--dl-text)]">
+        <span className="text-xs font-semibold uppercase tracking-widest">Time</span>
+        <p className="text-[var(--dl-yellow-shadow)] text-3xl font-bold font-mono" aria-live="off">{formatTime(state.elapsedTime)}</p>
       </div>
       <div className="w-full max-w-5xl space-y-4 mb-6">
         {state.players.map(p => <PlayerCard key={p.id} player={p} />)}

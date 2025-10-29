@@ -215,8 +215,9 @@ export const characterService = {
         if (unlocked.characterItems.includes(itemId)) return false;
         
         unlocked.characterItems.push(itemId);
-        const { themes, soundPacks, characterItems } = unlocked;
-        localStorage.setItem('gemini-type-racer-unlocked-customizations', JSON.stringify({ themes, soundPacks, characterItems }));
+        // FIX: The 'themes' property does not exist on UnlockedCustomizations.
+        // Simplified to match the pattern in customizationService.unlockSoundPack.
+        localStorage.setItem('gemini-type-racer-unlocked-customizations', JSON.stringify(unlocked));
         return true;
     },
 

@@ -166,7 +166,6 @@ interface AppState {
   setShowSettingsModal: (show: boolean) => void;
   setShowTutorialModal: (show: boolean) => void;
   setShowCharacterModal: (show: boolean) => void;
-  applyTheme: (themeId: PlayerSettings['activeThemeId']) => void;
   applySoundPack: (packId: PlayerSettings['activeSoundPackId']) => void;
   equipItem: (itemId: string) => void;
   addToast: (toast: Omit<Toast, 'id'>) => void;
@@ -576,10 +575,6 @@ export const useStore = create<AppState>((set, get) => ({
 
     newlyUnlocked.forEach(ach => {
         addToast({ message: `Achievement: ${ach.name}`, type: 'success' });
-        if (ach.reward?.type === 'theme') {
-            if (customizationService.unlockTheme(ach.reward.id))
-                addToast({ message: `Theme Unlocked: ${ach.reward.id}`, type: 'info' });
-        }
         if (ach.reward?.type === 'soundPack') {
             if (customizationService.unlockSoundPack(ach.reward.id))
                 addToast({ message: `Sound Pack Unlocked: ${ach.reward.id}`, type: 'info' });
@@ -903,11 +898,6 @@ export const useStore = create<AppState>((set, get) => ({
     if (!show) {
         localStorage.setItem('gemini-type-racer-tutorial-seen', 'true');
     }
-  },
-  applyTheme: (themeId) => {
-      const newSettings: PlayerSettings = { ...get().playerSettings, activeThemeId: themeId };
-      customizationService.savePlayerSettings(newSettings);
-      set({ playerSettings: newSettings });
   },
   applySoundPack: (packId) => {
     const newSettings: PlayerSettings = { ...get().playerSettings, activeSoundPackId: packId };
