@@ -1,5 +1,6 @@
 
 
+
 export enum Evolution {
   ATHLETIC = 'ATHLETIC',
   STAMINA = 'STAMINA',
@@ -9,6 +10,7 @@ export enum Evolution {
 export enum GameState {
   CHARACTER_CREATION = 'CHARACTER_CREATION',
   ADVENTURE_MAP = 'ADVENTURE_MAP',
+  RACE_CONFIRMATION = 'RACE_CONFIRMATION',
   COUNTDOWN = 'COUNTDOWN',
   TYPING = 'TYPING',
   RESULTS = 'RESULTS',
@@ -67,6 +69,7 @@ export interface Player {
   rank?: number;
   wpmHistory?: WpmDataPoint[];
   character?: PlayerCharacter;
+  isBoosted?: boolean;
   // Bot-specific properties
   targetWpm?: number;
   isFallingBehind?: boolean;

@@ -88,6 +88,7 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ player }) => {
   };
 
   const visualProgress = calculateVisualProgress();
+  const duckContainerClasses = `absolute transition-all duration-300 ease-linear ${player.isBoosted ? 'duck-container--boosted' : ''}`;
 
   return (
     <div className={cardClasses} role="status" aria-live="polite" aria-label={ariaLabel}>
@@ -121,7 +122,7 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ player }) => {
         {/* Duck Character */}
         {player.character && !player.isGhost && (
             <div
-                className="absolute transition-all duration-300 ease-linear"
+                className={duckContainerClasses}
                 style={{
                     left: `${visualProgress}%`,
                     top: '50%',

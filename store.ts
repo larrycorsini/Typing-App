@@ -7,7 +7,7 @@ import { getLeaderboard, addLeaderboardEntry } from './services/leaderboardServi
 import { customizationService } from './services/customizationService';
 import { websocketService } from './services/websocketService';
 import { courseService } from './services/courseService';
-import { characterService, RACE_ENERGY_COST, TRAINING_ENERGY_COST } from './services/characterService';
+import { characterService, RACE_ENERGY_COST, TRAINING_ENERGY_COST, allShopItems } from './services/characterService';
 import { mapService } from './services/mapService';
 
 const BOT_COLORS = ['#FFFFFF', '#8A2BE2', '#32CD32', '#1E90FF', '#FF4500', '#FF69B4', '#F0E68C', '#7FFFD4'];
@@ -48,6 +48,8 @@ interface AppState {
   rankCounter: number;
   currentBossIntro: Boss | null;
   currentMapNodeId: number | null;
+  activeConsumables: Record<ConsumableItemId, boolean>;
+  wpmBoostEndTime: number | null;
 
   // Online Race State
   socketStatus: SocketStatus;
@@ -99,6 +101,9 @@ interface AppState {
   endRace: () => void;
   returnToMap: () => void;
   _addXp: (amount: number) => void;
+  consumeItem: (itemId: ConsumableItemId) => void;
+  confirmStartRace: () => Promise<void>;
+  clearActiveConsumables: () => void;
 
   // Online Actions
   setSocketStatus: (status: SocketStatus) => void;
@@ -161,6 +166,8 @@ export const useStore = create<AppState>((set, get) => ({
   rankCounter: 1,
   currentBossIntro: null,
   currentMapNodeId: null,
+  activeConsumables: { 'wpm_booster': false, 'focus_goggles': false, 'energy_seed': false },
+  wpmBoostEndTime: null,
   
   socketStatus: 'disconnected',
   onlineRooms: [],
@@ -234,7 +241,7 @@ export const useStore = create<AppState>((set, get) => ({
     });
   },
   startMapNodeActivity: async (nodeId) => {
-    const { playerCharacter, addToast, _resetTypingState } = get();
+    const { playerCharacter, addToast } = get();
     const node = mapService.getNodeById(nodeId);
     if (!node) return;
 
@@ -251,21 +258,62 @@ export const useStore = create<AppState>((set, get) => ({
       return;
     }
     
-    // It's a RACE node
     if (playerCharacter.energy < RACE_ENERGY_COST) {
       addToast({ message: "Not enough energy to race!", type: 'error'});
       return;
     }
 
+    set({
+      raceMode: RaceMode.ADVENTURE,
+      currentMapNodeId: nodeId,
+      gameState: GameState.RACE_CONFIRMATION,
+    });
+  },
+
+  consumeItem: (itemId) => {
+    set(state => {
+        const currentStatus = state.activeConsumables[itemId];
+        if (!currentStatus && state.playerCharacter.inventory[itemId] < 1) {
+            get().addToast({ message: `You don't have any ${itemId.replace('_', ' ')}s!`, type: 'error' });
+            return state;
+        }
+        return {
+            activeConsumables: {
+                ...state.activeConsumables,
+                [itemId]: !currentStatus,
+            }
+        };
+    });
+  },
+
+  confirmStartRace: async () => {
+    const { playerCharacter, activeConsumables, _resetTypingState, currentMapNodeId } = get();
+    const node = mapService.getNodeById(currentMapNodeId!);
+    if (!node || node.type !== 'RACE') return;
+
     _resetTypingState();
+    let finalCharacter = { ...playerCharacter };
+    let boostEndTime: number | null = null;
+    
+    if (activeConsumables.wpm_booster) {
+        const item = allShopItems.find(i => i.id === 'wpm_booster');
+        const duration = (item?.effect.type === 'wpm_boost' ? item.effect.value : 10) * 1000;
+        boostEndTime = Date.now() + duration;
+        finalCharacter.inventory.wpm_booster--;
+    }
+    if (activeConsumables.focus_goggles) {
+        finalCharacter.inventory.focus_goggles--;
+    }
+    characterService.saveCharacterData(finalCharacter);
+
     set({ 
       textToType: 'Loading passage...', 
       currentLesson: null, 
       xpGainedThisRace: 0, 
       coinsGainedThisRace: 0, 
       rankCounter: 1,
-      raceMode: RaceMode.ADVENTURE,
-      currentMapNodeId: nodeId,
+      wpmBoostEndTime: boostEndTime,
+      playerCharacter: finalCharacter,
     });
 
     const paragraph = await getTypingParagraph(RaceTheme.MOVIE_QUOTES, RaceMode.SOLO_MEDIUM);
@@ -285,31 +333,25 @@ export const useStore = create<AppState>((set, get) => ({
     });
 
     set({ players: initialPlayers, textToType: paragraph, elapsedTime: 0, gameState: GameState.COUNTDOWN });
+    get().clearActiveConsumables();
+  },
+
+  clearActiveConsumables: () => {
+    set({ activeConsumables: { 'wpm_booster': false, 'focus_goggles': false, 'energy_seed': false } });
   },
 
   updateGame: (deltaTime: number) => {
     set(state => {
-        if (state.gameState !== GameState.TYPING || !state.raceMode) {
+        if (state.gameState !== GameState.TYPING) {
             return state;
         }
-
-        if (state.raceMode === RaceMode.ONLINE_RACE) {
-            websocketService.sendMessage({ type: 'progressUpdate', progress: state.playerStats.progress, wpm: state.playerStats.wpm });
-            return {
-                players: state.players.map(p =>
-                    p.isPlayer
-                        ? { ...p, progress: state.playerStats.progress, wpm: state.playerStats.wpm, accuracy: state.playerStats.accuracy, wpmHistory: state.wpmHistory }
-                        : p
-                ),
-            };
-        }
-
-        const playerProgress = state.playerStats.progress || 0;
+        
         let rank = state.rankCounter;
         
         const updatedPlayers = state.players.map(p => {
             if (p.isPlayer) {
-              return { ...p, progress: state.playerStats.progress, wpm: state.playerStats.wpm, accuracy: state.playerStats.accuracy, wpmHistory: state.wpmHistory };
+              const isBoosted = state.wpmBoostEndTime ? Date.now() < state.wpmBoostEndTime : false;
+              return { ...p, progress: state.playerStats.progress, wpm: state.playerStats.wpm, accuracy: state.playerStats.accuracy, wpmHistory: state.wpmHistory, isBoosted };
             }
             if (p.progress >= 100) return p;
             
@@ -328,7 +370,7 @@ export const useStore = create<AppState>((set, get) => ({
                 if (Math.random() < 0.03) { // Generic mistake chance
                   return { ...p, mistakeCycles: 2 };
                 }
-                const isFallingBehind = !p.isPlayer && playerProgress > 10 && p.progress < playerProgress - 20;
+                const isFallingBehind = !p.isPlayer && state.playerStats.progress > 10 && p.progress < state.playerStats.progress - 20;
                 const targetWpm = p.targetWpm || 60;
                 const randomFactor = (Math.random() - 0.5) * 20;
                 const wpmBoost = isFallingBehind ? 15 : 0;

@@ -72,7 +72,8 @@ const TrainingRunning: React.FC = () => {
             <h1 className="text-4xl font-bold mb-2">Running Training: Keyboard Dash</h1>
             <p className="opacity-80 mb-6">Type as many words as you can before the timer runs out!</p>
             <div className="text-6xl font-bold text-[var(--dl-yellow-shadow)] mb-6">{timeLeft}</div>
-            <TypingArea textToType={text} typed={typed} errors={errors} lastMistakeTime={lastMistakeTime} />
+            {/* FIX: Add the missing focusWordsCount prop, which is required by TypingArea. */}
+            <TypingArea textToType={text} typed={typed} errors={errors} lastMistakeTime={lastMistakeTime} focusWordsCount={0} />
         </div>
     );
 };

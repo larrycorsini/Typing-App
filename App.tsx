@@ -17,6 +17,8 @@ import AdventureMap from './components/AdventureMap';
 import TrainingRunning from './components/TrainingRunning';
 import TrainingSwimming from './components/TrainingSwimming';
 import TrainingFlying from './components/TrainingFlying';
+import RaceConfirmationModal from './components/RaceConfirmationModal';
+import { characterService } from './services/characterService';
 
 const App: React.FC = () => {
   const state = useStore();
@@ -27,23 +29,37 @@ const App: React.FC = () => {
     return `${minutes}:${seconds}`;
   };
 
-  const renderGame = () => (
-    <>
-      <div className="absolute top-4 right-4 text-center bg-[var(--dl-panel-bg)] p-2 px-4 rounded-lg shadow-md border-2 border-[var(--dl-text)]">
-        <span className="text-xs font-semibold uppercase tracking-widest">Time</span>
-        <p className="text-[var(--dl-yellow-shadow)] text-3xl font-bold font-mono" aria-live="off">{formatTime(state.elapsedTime)}</p>
-      </div>
-      <div className="w-full max-w-5xl space-y-4 mb-6">
-        {state.players.map(p => <PlayerCard key={p.id} player={p} />)}
-      </div>
-      <TypingArea textToType={state.textToType} typed={state.typed} errors={state.errors} lastMistakeTime={state.lastMistakeTime} />
-    </>
-  );
+  const renderGame = () => {
+    const focusGogglesEffect = characterService.allShopItems.find(i => i.id === 'focus_goggles')?.effect;
+    const focusWordsCount = state.activeConsumables['focus_goggles'] && focusGogglesEffect?.type === 'focus'
+        ? focusGogglesEffect.value
+        : 0;
+
+    return (
+        <>
+        <div className="absolute top-4 right-4 text-center bg-[var(--dl-panel-bg)] p-2 px-4 rounded-lg shadow-md border-2 border-[var(--dl-text)]">
+            <span className="text-xs font-semibold uppercase tracking-widest">Time</span>
+            <p className="text-[var(--dl-yellow-shadow)] text-3xl font-bold font-mono" aria-live="off">{formatTime(state.elapsedTime)}</p>
+        </div>
+        <div className="w-full max-w-5xl space-y-4 mb-6">
+            {state.players.map(p => <PlayerCard key={p.id} player={p} />)}
+        </div>
+        <TypingArea
+            textToType={state.textToType}
+            typed={state.typed}
+            errors={state.errors}
+            lastMistakeTime={state.lastMistakeTime}
+            focusWordsCount={focusWordsCount}
+        />
+        </>
+    );
+  }
 
   const renderContent = () => {
     switch(state.gameState) {
       case GameState.CHARACTER_CREATION: return <CharacterCreation onCharacterCreate={(name, color, evolution) => state.setPlayerAndEvolution(name, color, evolution)} />;
       case GameState.ADVENTURE_MAP: return <AdventureMap />;
+      case GameState.RACE_CONFIRMATION: return <RaceConfirmationModal />;
       case GameState.COURSE_LOBBY: return <CourseLobby />;
       case GameState.ONLINE_LOBBY: return <OnlineLobby />;
       case GameState.PARTY_SETUP: return <PartySetup />;

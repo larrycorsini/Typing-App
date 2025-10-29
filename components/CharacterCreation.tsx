@@ -103,7 +103,7 @@ const CharacterCreation: React.FC<CharacterCreationProps> = ({ onCharacterCreate
                   disabled={!name.trim()}
                   className="btn btn-primary text-2xl py-4"
                 >
-                  Join Lobby
+                  Start Adventure
                 </button>
             </form>
         </div>

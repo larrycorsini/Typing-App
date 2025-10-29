@@ -23,10 +23,10 @@ const Header: React.FC = () => {
                 <div className="flex-1 min-w-0 flex items-center gap-4">
                     <button 
                       onClick={() => setShowCharacterModal(true)} 
-                      className="bg-gray-200 hover:bg-gray-300 text-black font-bold w-10 h-10 rounded-full text-xl transition-colors border-2 border-gray-400 flex items-center justify-center flex-shrink-0"
+                      className="dl-header-btn flex-shrink-0"
                       aria-label="Customize character"
                     >
-                        ✏️
+                        Customize
                     </button>
                     <div className="flex-1 min-w-0">
                         <h1 className="text-xl font-bold truncate" title={playerName}>{playerName}</h1>
