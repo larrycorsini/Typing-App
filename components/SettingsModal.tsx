@@ -1,6 +1,7 @@
 import React from 'react';
 import { useStore } from '../store';
 import { useFocusTrap } from '../hooks/useFocusTrap';
+// FIX: Import `allThemes` and `allSoundPacks` directly.
 import { allThemes, allSoundPacks } from '../services/customizationService';
 
 interface SettingsModalProps {
@@ -23,6 +24,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                     <div>
                         <h3 className="text-xl text-slate-300 font-bold mb-3">UI Theme</h3>
                         <div className="grid grid-cols-2 gap-4">
+                            {/* FIX: Use the imported `allThemes` constant directly. */}
                             {allThemes.map(theme => {
                                 const isUnlocked = unlockedCustomizations.themes.includes(theme.id);
                                 const isActive = playerSettings.activeThemeId === theme.id;
@@ -47,6 +49,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                     <div>
                         <h3 className="text-xl text-slate-300 font-bold mb-3">Typing Sounds</h3>
                         <div className="grid grid-cols-2 gap-4">
+                            {/* FIX: Use the imported `allSoundPacks` constant directly. */}
                             {allSoundPacks.map(pack => {
                                 const isUnlocked = unlockedCustomizations.soundPacks.includes(pack.id);
                                 const isActive = playerSettings.activeSoundPackId === pack.id;

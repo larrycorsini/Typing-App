@@ -4,16 +4,19 @@ import { useStore } from './store';
 
 import TypingArea from './components/TypingArea';
 import PlayerCard from './components/PlayerCard';
-import NameSelection from './components/NameSelection';
+import CharacterCreation from './components/CharacterCreation';
 import PartySetup from './components/PartySetup';
 import PartyTransition from './components/PartyTransition';
 import OnlineLobby from './components/OnlineLobby';
 import CustomTextSetup from './components/CustomTextSetup';
 import CourseLobby from './components/CourseLobby';
 import TrainingGround from './components/TrainingGround';
-import FeedingStation from './components/FeedingStation';
+import Shop from './components/Shop';
 import TournamentLobby from './components/TournamentLobby';
 import Lobby from './components/Lobby';
+import TrainingRunning from './components/TrainingRunning';
+import TrainingSwimming from './components/TrainingSwimming';
+import TrainingFlying from './components/TrainingFlying';
 
 const App: React.FC = () => {
   const state = useStore();
@@ -43,7 +46,7 @@ const App: React.FC = () => {
 
   const renderContent = () => {
     switch(state.gameState) {
-      case GameState.NAME_SELECTION: return <NameSelection onNameSubmit={(name, color) => state.setPlayerName(name, color)} />;
+      case GameState.CHARACTER_CREATION: return <CharacterCreation onCharacterCreate={(name, color, evolution) => state.setPlayerAndEvolution(name, color, evolution)} />;
       case GameState.LOBBY: return <Lobby />;
       case GameState.COURSE_LOBBY: return <CourseLobby />;
       case GameState.ONLINE_LOBBY: return <OnlineLobby />;
@@ -51,8 +54,11 @@ const App: React.FC = () => {
       case GameState.PARTY_TRANSITION: return <PartyTransition />;
       case GameState.CUSTOM_TEXT_SETUP: return <CustomTextSetup />;
       case GameState.TRAINING_GROUND: return <TrainingGround />;
-      case GameState.FEEDING_STATION: return <FeedingStation />;
+      case GameState.SHOP: return <Shop />;
       case GameState.TOURNAMENT_LOBBY: return <TournamentLobby />;
+      case GameState.TRAINING_RUNNING: return <TrainingRunning />;
+      case GameState.TRAINING_SWIMMING: return <TrainingSwimming />;
+      case GameState.TRAINING_FLYING: return <TrainingFlying />;
       case GameState.TYPING: case GameState.COUNTDOWN: return renderGame();
       default: return null;
     }

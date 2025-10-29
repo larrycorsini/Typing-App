@@ -1,5 +1,5 @@
 import React from 'react';
-import { Player } from '../types';
+import { Player, Evolution } from '../types';
 import CharacterDisplay from './CharacterDisplay';
 
 // Fix: Define the missing PlayerCardProps interface.
@@ -39,20 +39,25 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ player }) => {
   
   const calculateVisualProgress = () => {
     const baseProgress = player.progress;
-    const runningBoost = player.character?.running ? (player.character.running / 5) : 0;
+    // Athletic Duck bonus
+    const runningDivisor = player.character?.evolution === Evolution.ATHLETIC ? 4 : 5;
+    const runningBoost = player.character?.running ? (player.character.running / runningDivisor) : 0;
     let visualProgress = baseProgress + runningBoost;
+
+    // Stamina Duck bonus
+    const hazardResistance = player.character?.evolution === Evolution.STAMINA ? 0.7 : 1.0;
 
     // Apply water hazard slowdown
     if (player.character && baseProgress > WATER_HAZARD_START && baseProgress < WATER_HAZARD_END) {
         const swimmingLevel = player.character.swimming || 1;
-        const slowdownFactor = Math.max(0, MAX_SWIM_SLOWDOWN - (swimmingLevel - 1) * SWIM_SKILL_EFFECTIVENESS);
+        const slowdownFactor = Math.max(0, MAX_SWIM_SLOWDOWN - (swimmingLevel - 1) * SWIM_SKILL_EFFECTIVENESS) * hazardResistance;
         const progressInWater = baseProgress - WATER_HAZARD_START;
         const slowedProgressInWater = progressInWater * (1 - slowdownFactor);
         
         visualProgress = WATER_HAZARD_START + runningBoost + slowedProgressInWater;
     } else if (player.character && baseProgress >= WATER_HAZARD_END) {
         const swimmingLevel = player.character.swimming || 1;
-        const slowdownFactor = Math.max(0, MAX_SWIM_SLOWDOWN - (swimmingLevel - 1) * SWIM_SKILL_EFFECTIVENESS);
+        const slowdownFactor = Math.max(0, MAX_SWIM_SLOWDOWN - (swimmingLevel - 1) * SWIM_SKILL_EFFECTIVENESS) * hazardResistance;
         const waterSectionLength = WATER_HAZARD_END - WATER_HAZARD_START;
         const effectiveWaterLength = waterSectionLength * (1 - slowdownFactor);
         const penalty = waterSectionLength - effectiveWaterLength;
@@ -63,7 +68,7 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ player }) => {
     // Apply hurdle slowdown
     if (player.character && visualProgress > HURDLE_START && visualProgress < HURDLE_END) {
         const flyingLevel = player.character.flying || 1;
-        const slowdownFactor = Math.max(0, MAX_FLYING_SLOWDOWN - (flyingLevel - 1) * FLYING_SKILL_EFFECTIVENESS);
+        const slowdownFactor = Math.max(0, MAX_FLYING_SLOWDOWN - (flyingLevel - 1) * FLYING_SKILL_EFFECTIVENESS) * hazardResistance;
         const progressInHurdle = visualProgress - HURDLE_START;
         const slowedProgressInHurdle = progressInHurdle * (1 - slowdownFactor);
 
@@ -71,7 +76,7 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ player }) => {
 
     } else if (player.character && visualProgress >= HURDLE_END) {
         const flyingLevel = player.character.flying || 1;
-        const slowdownFactor = Math.max(0, MAX_FLYING_SLOWDOWN - (flyingLevel - 1) * FLYING_SKILL_EFFECTIVENESS);
+        const slowdownFactor = Math.max(0, MAX_FLYING_SLOWDOWN - (flyingLevel - 1) * FLYING_SKILL_EFFECTIVENESS) * hazardResistance;
         const hurdleSectionLength = HURDLE_END - HURDLE_START;
         const effectiveHurdleLength = hurdleSectionLength * (1 - slowdownFactor);
         const penalty = hurdleSectionLength - effectiveHurdleLength;

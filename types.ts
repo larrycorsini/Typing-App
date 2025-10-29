@@ -1,7 +1,13 @@
 
 
+export enum Evolution {
+  ATHLETIC = 'ATHLETIC',
+  STAMINA = 'STAMINA',
+  INTELLECT = 'INTELLECT',
+}
+
 export enum GameState {
-  NAME_SELECTION = 'NAME_SELECTION',
+  CHARACTER_CREATION = 'CHARACTER_CREATION',
   LOBBY = 'LOBBY',
   COUNTDOWN = 'COUNTDOWN',
   TYPING = 'TYPING',
@@ -12,8 +18,12 @@ export enum GameState {
   CUSTOM_TEXT_SETUP = 'CUSTOM_TEXT_SETUP',
   COURSE_LOBBY = 'COURSE_LOBBY',
   TRAINING_GROUND = 'TRAINING_GROUND',
-  FEEDING_STATION = 'FEEDING_STATION',
+  SHOP = 'SHOP',
   TOURNAMENT_LOBBY = 'TOURNAMENT_LOBBY',
+  TRAINING_RUNNING = 'TRAINING_RUNNING',
+  TRAINING_SWIMMING = 'TRAINING_SWIMMING',
+  TRAINING_FLYING = 'TRAINING_FLYING',
+  BOSS_INTRO = 'BOSS_INTRO',
 }
 
 export enum RaceMode {
@@ -82,10 +92,10 @@ export interface GhostData {
   text: string;
 }
 
-export type AchievementId = 'FIRST_RACE' | 'FIRST_WIN' | 'WPM_100' | 'PERFECT_ACCURACY' | 'ALL_THEMES' | 'ENDURANCE_MASTER' | 'DIY_RACER' | 'DAILY_RACER' | 'SOUND_MAESTRO' | 'LEVEL_5';
+export type AchievementId = 'FIRST_RACE' | 'FIRST_WIN' | 'WPM_100' | 'PERFECT_ACCURACY' | 'ALL_THEMES' | 'ENDURANCE_MASTER' | 'DIY_RACER' | 'DAILY_RACER' | 'SOUND_MAESTRO' | 'LEVEL_5' | 'CHAMPION';
 
 export interface CustomizationTheme {
-    id: 'default' | 'fiery';
+    id: 'default' | 'fiery' | 'golden_keyboard';
     name: string;
 }
 
@@ -160,7 +170,23 @@ export interface CharacterCustomizationItem {
   emoji: string;
 }
 
+export type ConsumableItemId = 'energy_seed' | 'focus_goggles' | 'wpm_booster';
+
+export interface ShopItem {
+    id: string;
+    name: string;
+    description: string;
+    cost: number;
+    type: 'food' | 'gear';
+    effect: {
+        type: 'energy' | 'wpm_boost' | 'focus';
+        value: number;
+    };
+}
+
+
 export interface PlayerCharacter {
+  evolution: Evolution;
   level: number;
   xp: number;
   xpToNextLevel: number;
@@ -170,12 +196,19 @@ export interface PlayerCharacter {
   };
   color: string;
   running: number;
+  runningXp: number;
+  runningXpToNextLevel: number;
   swimming: number;
+  swimmingXp: number;
+  swimmingXpToNextLevel: number;
   flying: number;
+  flyingXp: number;
+  flyingXpToNextLevel: number;
   energy: number;
   maxEnergy: number;
   coins: number;
   defeatedBosses: string[];
+  inventory: Record<ConsumableItemId, number>;
 }
 
 export interface Boss {
@@ -188,6 +221,19 @@ export interface Boss {
     swimming: number;
     flying: number;
   };
+  narrative: string;
+  taunt: string;
+  entryFee: number;
+  rewards: {
+      xp: number;
+      coins: number;
+  }
+}
+
+export interface League {
+    id: string;
+    name: string;
+    bosses: Boss[];
 }
 
 // WebSocket Types

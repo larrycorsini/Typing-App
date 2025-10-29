@@ -1,26 +1,41 @@
 
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useCallback, useRef } from 'react';
 import { useStore } from '../store';
-import { useTypingGame } from '../hooks/useTypingGame';
 import { GameState, RaceMode } from '../types';
 
 let gameLoopInterval: number | null = null;
+let statsInterval: number | null = null;
 
 export const AppStateSync: React.FC = () => {
-    const state = useStore();
-    const { typed, errors, stats, isFinished: hookIsFinished, reset, wpmHistory: hookWpmHistory } = useTypingGame(state.textToType, state.raceMode, state.gameState === GameState.TYPING);
+    // Select state and actions from the store
+    const {
+        gameState,
+        isFinished,
+        typedLength,
+        endRace,
+        handleKeyDown,
+        calculateStats,
+        socketStatus,
+        raceMode,
+        addToast,
+        setGameState,
+    } = useStore(s => ({
+        gameState: s.gameState,
+        isFinished: s.isFinished,
+        typedLength: s.typed.length,
+        endRace: s.endRace,
+        handleKeyDown: s.handleKeyDown,
+        calculateStats: s._calculateStats,
+        socketStatus: s.socketStatus,
+        raceMode: s.raceMode,
+        addToast: s.addToast,
+        setGameState: s.setGameState,
+    }));
 
-    const endRaceAction = useStore(s => s.endRace);
-
-    useEffect(() => { useStore.setState({ _resetTypingHook: reset }); }, [reset]);
-
+    // Game loop for bot movement and elapsed time
     useEffect(() => {
-        state._setTypingHookState({ typed, errors, playerStats: stats, isFinished: hookIsFinished, wpmHistory: hookWpmHistory });
-    }, [typed, errors, stats, hookIsFinished, hookWpmHistory, state._setTypingHookState]);
-
-    useEffect(() => {
-        if (state.gameState === GameState.TYPING) {
+        if (gameState === GameState.TYPING) {
             gameLoopInterval = window.setInterval(() => {
                 useStore.setState(s => ({ elapsedTime: s.elapsedTime + 1 }));
                 useStore.getState().updateGame(1);
@@ -30,23 +45,51 @@ export const AppStateSync: React.FC = () => {
             gameLoopInterval = null;
         }
         return () => { if (gameLoopInterval) clearInterval(gameLoopInterval); };
-    }, [state.gameState]);
-    
+    }, [gameState]);
+
+    // Interval to calculate player stats (WPM, accuracy)
     useEffect(() => {
-        if (state.isFinished && state.gameState === GameState.TYPING) {
-            endRaceAction();
+        if (gameState === GameState.TYPING && typedLength > 0) {
+            statsInterval = window.setInterval(() => {
+                calculateStats();
+            }, 500);
+        } else {
+            if (statsInterval) clearInterval(statsInterval);
+            statsInterval = null;
         }
-    }, [state.isFinished, state.gameState, endRaceAction]);
+        return () => { if (statsInterval) clearInterval(statsInterval); }
+    }, [gameState, typedLength, calculateStats]);
 
+    // End the race when finished
+    useEffect(() => {
+        if (isFinished && gameState === GameState.TYPING) {
+            endRace();
+        }
+    }, [isFinished, gameState, endRace]);
+
+    // Keyboard event listener
+    const onKeyDown = useCallback((e: KeyboardEvent) => {
+        const isGameActive = useStore.getState().gameState === GameState.TYPING;
+        if (!isGameActive) return;
+
+        const { key } = e;
+        if (key === 'Backspace') {
+            e.preventDefault();
+            handleKeyDown('', true);
+        } else if (key.length === 1) { 
+            e.preventDefault();
+            handleKeyDown(key, false);
+        }
+    }, [handleKeyDown]);
+
+    useEffect(() => {
+        window.addEventListener('keydown', onKeyDown);
+        return () => {
+            window.removeEventListener('keydown', onKeyDown);
+        };
+    }, [onKeyDown]);
+    
     // Effect to handle socket errors safely within the React lifecycle
-    const { socketStatus, gameState, raceMode, addToast, setGameState } = useStore(s => ({
-        socketStatus: s.socketStatus,
-        gameState: s.gameState,
-        raceMode: s.raceMode,
-        addToast: s.addToast,
-        setGameState: s.setGameState,
-    }));
-
     const hasShownConnectionErrorToast = useRef(false);
 
     useEffect(() => {

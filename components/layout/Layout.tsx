@@ -8,6 +8,7 @@ import AchievementsModal from '../AchievementsModal';
 import SettingsModal from '../SettingsModal';
 import TutorialModal from '../TutorialModal';
 import CharacterCustomizationModal from '../CharacterCustomizationModal';
+import StoryModal from '../StoryModal';
 import ToastContainer from '../Toast';
 import Countdown from '../Countdown';
 import ResultsModal from '../ResultsModal';
@@ -41,7 +42,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         {state.isMuted ? '🔇' : '🔊'}
       </button>
 
-      {state.gameState !== GameState.NAME_SELECTION && <Header />}
+      {state.gameState !== GameState.CHARACTER_CREATION && <Header />}
 
       <main className="min-h-screen flex flex-col items-center justify-center p-4 md:p-8 relative pt-24">
         {children}
@@ -49,6 +50,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
       {state.gameState === GameState.COUNTDOWN && <Countdown onComplete={() => state.setGameState(GameState.TYPING)} />}
       {state.gameState === GameState.RESULTS && <ResultsModal players={state.players} onPlayAgain={handleResultsModalClose} />}
+      {state.gameState === GameState.BOSS_INTRO && <StoryModal />}
       {state.showStatsModal && <PlayerStatsModal stats={state.persistentPlayerStats} onClose={() => state.setShowStatsModal(false)} />}
       {state.showLeaderboardModal && <LeaderboardModal onClose={() => state.setShowLeaderboardModal(false)} />}
       {state.showAchievementsModal && <AchievementsModal onClose={() => state.setShowAchievementsModal(false)} />}

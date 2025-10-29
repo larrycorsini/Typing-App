@@ -6,6 +6,7 @@ const PLAYER_SETTINGS_KEY = 'gemini-type-racer-player-settings';
 export const allThemes: CustomizationTheme[] = [
     { id: 'default', name: 'Default Dark' },
     { id: 'fiery', name: 'Fiery Orange' },
+    { id: 'golden_keyboard', name: 'Golden Keyboard' },
 ];
 
 export const allSoundPacks: CustomizationSoundPack[] = [
@@ -18,7 +19,7 @@ const getDefaults = (): { customizations: UnlockedCustomizations, settings: Play
     customizations: {
         themes: ['default'],
         soundPacks: ['classic', 'scifi'], // Give scifi for free
-        characterItems: ['top_hat'], // Start with a default hat
+        characterItems: [], 
     },
     settings: {
         activeThemeId: 'default',

@@ -27,6 +27,12 @@ const allAchievements: Omit<Achievement, 'unlocked'>[] = [
         name: 'Sound Maestro', 
         description: 'Finish a race with 120+ WPM and 99%+ accuracy.',
         reward: { type: 'soundPack', id: 'mechanical' }
+    },
+    {
+        id: 'CHAMPION',
+        name: 'Keyboard King',
+        description: 'Defeat the final Champion and assemble the Golden Keyboard.',
+        reward: { type: 'theme', id: 'golden_keyboard'}
     }
 ];
 
@@ -61,6 +67,7 @@ interface RaceResultForAchievements {
     mode: RaceMode;
     stats: PlayerStats;
     level: number;
+    defeatedFinalBoss?: boolean;
 }
 
 // Store which themes have been played
@@ -111,6 +118,7 @@ export const checkAndUnlockAchievements = (result: RaceResultForAchievements): A
     check('DIY_RACER', result.mode === RaceMode.CUSTOM_TEXT);
     check('DAILY_RACER', result.mode === RaceMode.DAILY_CHALLENGE);
     check('SOUND_MAESTRO', result.wpm >= 120 && result.accuracy >= 99);
+    check('CHAMPION', !!result.defeatedFinalBoss);
 
 
     if (newlyUnlocked.length > 0) {

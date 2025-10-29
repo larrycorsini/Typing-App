@@ -38,10 +38,10 @@ const CharacterDisplay: React.FC<CharacterDisplayProps> = ({ character, isPrevie
                     role="img"
                     aria-label={hat.name}
                     style={{
-                        fontSize: '50px',
+                        fontSize: '40px',
                         position: 'absolute',
-                        top: '-35px',
-                        left: '62.5%',
+                        top: '-15px',
+                        left: '55%',
                         transform: 'translateX(-50%)',
                         zIndex: 20,
                     }}
@@ -54,10 +54,10 @@ const CharacterDisplay: React.FC<CharacterDisplayProps> = ({ character, isPrevie
                     role="img"
                     aria-label={accessory.name}
                     style={{
-                        fontSize: '30px',
+                        fontSize: '24px',
                         position: 'absolute',
-                        top: '40px',
-                        left: '65%',
+                        top: '65px',
+                        left: '50%',
                         transform: 'translateX(-50%)',
                         zIndex: 16,
                     }}
