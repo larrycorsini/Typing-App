@@ -50,6 +50,7 @@ interface AppState {
   currentMapNodeId: number | null;
   activeConsumables: Record<ConsumableItemId, boolean>;
   wpmBoostEndTime: number | null;
+  loadingMessage: string;
 
   // Online Race State
   socketStatus: SocketStatus;
@@ -168,6 +169,7 @@ export const useStore = create<AppState>((set, get) => ({
   currentMapNodeId: null,
   activeConsumables: { 'wpm_booster': false, 'focus_goggles': false, 'energy_seed': false },
   wpmBoostEndTime: null,
+  loadingMessage: '',
   
   socketStatus: 'disconnected',
   onlineRooms: [],
@@ -307,7 +309,8 @@ export const useStore = create<AppState>((set, get) => ({
     characterService.saveCharacterData(finalCharacter);
 
     set({ 
-      textToType: 'Loading passage...', 
+      gameState: GameState.LOADING,
+      loadingMessage: 'Generating your race with Gemini...',
       currentLesson: null, 
       xpGainedThisRace: 0, 
       coinsGainedThisRace: 0, 
@@ -692,6 +695,10 @@ export const useStore = create<AppState>((set, get) => ({
   startPartyGame: async () => {
     if (get().partyPlayers.length === 0) return;
     const firstPlayerName = get().partyPlayers[0].name;
+    set({
+      gameState: GameState.LOADING,
+      loadingMessage: 'Preparing your party race...',
+    });
     const text = await getTypingParagraph(RaceTheme.HARRY_POTTER, RaceMode.SOLO_MEDIUM);
     set({
         players: [{ id: PLAYER_ID, name: firstPlayerName, isPlayer: true, progress: 0, wpm: 0, accuracy: 100, character: get().playerCharacter }],
@@ -781,7 +788,12 @@ export const useStore = create<AppState>((set, get) => ({
     characterService.saveCharacterData(newCharacter);
     set({ playerCharacter: newCharacter });
     _resetTypingState();
-    set({ textToType: 'Loading passage...', raceMode: RaceMode.BOSS_BATTLE, rankCounter: 1 });
+    set({ 
+      raceMode: RaceMode.BOSS_BATTLE, 
+      rankCounter: 1,
+      gameState: GameState.LOADING,
+      loadingMessage: 'The boss is preparing their challenge...',
+    });
     const paragraph = await getTypingParagraph(RaceTheme.MOVIE_QUOTES, RaceMode.SOLO_HARD);
     const players: Player[] = [
         { id: PLAYER_ID, name: get().playerName, isPlayer: true, progress: 0, wpm: 0, accuracy: 100, wpmHistory: [], character: playerCharacter },

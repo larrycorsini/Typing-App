@@ -78,6 +78,10 @@
         from { transform: translateX(0); opacity: 1; }
         to { transform: translateX(100%); opacity: 0; }
       }
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
       .animate-fadeIn {
         animation: fadeIn 0.5s ease-in-out forwards;
       }
@@ -385,7 +389,17 @@
         0% { transform: translate(-50%, -50%) scale(1); }
         50% { transform: translate(-50%, -50%) scale(1.1); box-shadow: 0 0 0 8px rgba(255, 255, 255, 0.5); }
         100% { transform: translate(-50%, -50%) scale(1); }
-    }
+      }
+
+      /* Loading Spinner */
+      .loading-spinner {
+        width: 60px;
+        height: 60px;
+        border: 8px solid var(--dl-panel-bg);
+        border-top: 8px solid var(--dl-text);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
       
     </style>
   <script type="importmap">

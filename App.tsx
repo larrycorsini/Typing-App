@@ -19,6 +19,7 @@ import TrainingSwimming from './components/TrainingSwimming';
 import TrainingFlying from './components/TrainingFlying';
 import RaceConfirmationModal from './components/RaceConfirmationModal';
 import { characterService } from './services/characterService';
+import LoadingScreen from './components/LoadingScreen';
 
 const App: React.FC = () => {
   const state = useStore();
@@ -60,6 +61,7 @@ const App: React.FC = () => {
       case GameState.CHARACTER_CREATION: return <CharacterCreation onCharacterCreate={(name, color, evolution) => state.setPlayerAndEvolution(name, color, evolution)} />;
       case GameState.ADVENTURE_MAP: return <AdventureMap />;
       case GameState.RACE_CONFIRMATION: return <RaceConfirmationModal />;
+      case GameState.LOADING: return <LoadingScreen />;
       case GameState.COURSE_LOBBY: return <CourseLobby />;
       case GameState.ONLINE_LOBBY: return <OnlineLobby />;
       case GameState.PARTY_SETUP: return <PartySetup />;
