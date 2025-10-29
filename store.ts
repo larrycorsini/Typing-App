@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { GameState, Player, RaceMode, RaceTheme, Toast, TypingStats, WpmDataPoint, PlayerStats, Achievement, LeaderboardEntry, GhostData, PlayerSettings, UnlockedCustomizations, PartyPlayer, RoomInfo, ServerToClientMessage, CourseLesson, PlayerCharacter, Boss, ConsumableItemId, Evolution } from './types';
+import { GameState, Player, RaceMode, RaceTheme, Toast, TypingStats, WpmDataPoint, PlayerStats, Achievement, LeaderboardEntry, GhostData, PlayerSettings, UnlockedCustomizations, PartyPlayer, RoomInfo, ServerToClientMessage, CourseLesson, PlayerCharacter, Boss, ConsumableItemId, Evolution, MapNode } from './types';
 import { getTypingParagraph } from './services/geminiService';
 import { soundService } from './services/soundService';
 import { getAchievements, checkAndUnlockAchievements } from './services/achievementService';
@@ -8,36 +8,10 @@ import { customizationService } from './services/customizationService';
 import { websocketService } from './services/websocketService';
 import { courseService } from './services/courseService';
 import { characterService, RACE_ENERGY_COST, TRAINING_ENERGY_COST } from './services/characterService';
+import { mapService } from './services/mapService';
 
-const BOT_NAMES = ['RacerX', 'Speedy', 'KeyMaster', 'TypoBot', 'CodeCrusher', 'LyricLover', 'QuoteQueen', 'GhostRider', 'PixelPusher', 'ByteBlaster'];
-const PLAYER_ID = 'player-1';
 const BOT_COLORS = ['#FFFFFF', '#8A2BE2', '#32CD32', '#1E90FF', '#FF4500', '#FF69B4', '#F0E68C', '#7FFFD4'];
-
-
-const getBotWpmRange = (mode: RaceMode): [number, number] => {
-  switch (mode) {
-    case RaceMode.SOLO_EASY: return [30, 15]; // base, range -> 30-45 WPM
-    case RaceMode.SOLO_MEDIUM: return [50, 20]; // -> 50-70 WPM
-    case RaceMode.SOLO_HARD: return [70, 30]; // -> 70-100 WPM
-    case RaceMode.PUBLIC: return [40, 50]; // -> 40-90 WPM (wider range)
-    default: return [50, 20];
-  }
-}
-
-const getBotBehavior = (mode: RaceMode) => {
-  switch (mode) {
-    case RaceMode.SOLO_EASY:
-      return { mistakeChance: 0.05, mistakeDuration: 3, wpmFluctuation: 10 };
-    case RaceMode.SOLO_MEDIUM:
-      return { mistakeChance: 0.03, mistakeDuration: 2, wpmFluctuation: 20 };
-    case RaceMode.SOLO_HARD:
-      return { mistakeChance: 0.015, mistakeDuration: 1, wpmFluctuation: 25 };
-     case RaceMode.PUBLIC:
-      return { mistakeChance: 0.04, mistakeDuration: 2, wpmFluctuation: 35 };
-    default:
-      return { mistakeChance: 0.03, mistakeDuration: 2, wpmFluctuation: 20 };
-  }
-};
+const PLAYER_ID = 'player-1';
 
 const ENDURANCE_WORD_POOL = "the of to and a in is it you that he was for on are with as I his they be at one have this from or had by but what some we can out other were all there when up use your how said an each she which do their time if will way about many then them write would like so these her long make thing see him two has look who may part come its now find than first water been called who am its now find day did get come made may part".split(" ");
 const ENDURANCE_DURATION_SECONDS = 60;
@@ -66,21 +40,20 @@ interface AppState {
   gameState: GameState;
   playerName: string;
   raceMode: RaceMode | null;
-  raceTheme: RaceTheme | null;
   textToType: string;
   players: Player[];
   elapsedTime: number;
-  textGenerationRequestCounter: number;
   xpGainedThisRace: number;
   coinsGainedThisRace: number;
   rankCounter: number;
   currentBossIntro: Boss | null;
+  currentMapNodeId: number | null;
 
   // Online Race State
   socketStatus: SocketStatus;
   onlineRooms: RoomInfo[];
   currentRoomId: string | null;
-  myId: string | null; // Our server-authoritative ID
+  myId: string | null;
   onlineCountdown: number;
 
   // Party Race State
@@ -88,7 +61,7 @@ interface AppState {
   currentPartyPlayerIndex: number;
 
   // Typing Course State
-  courseProgress: number; // Highest unlocked lesson ID
+  courseProgress: number;
   currentLesson: CourseLesson | null;
 
   // Typing State (previously in hook)
@@ -97,6 +70,7 @@ interface AppState {
   playerStats: TypingStats;
   isFinished: boolean;
   wpmHistory: WpmDataPoint[];
+  lastMistakeTime: number;
 
   // UI State
   isMuted: boolean;
@@ -120,13 +94,10 @@ interface AppState {
   setGameState: (state: GameState) => void;
   setPlayerAndEvolution: (name: string, color: string, evolution: Evolution) => void;
   changeUser: () => void;
-  setRaceMode: (mode: RaceMode) => Promise<void>;
-  setRaceTheme: (theme: RaceTheme) => void;
-  initializeGame: () => Promise<void>;
-  startGame: () => void;
+  startMapNodeActivity: (nodeId: number) => Promise<void>;
   updateGame: (deltaTime: number) => void;
   endRace: () => void;
-  resetLobby: () => void;
+  returnToMap: () => void;
   _addXp: (amount: number) => void;
 
   // Online Actions
@@ -137,8 +108,9 @@ interface AppState {
   joinOnlineRoom: (roomId: string) => void;
   leaveOnlineRoom: () => void;
 
-  // New Mode Actions
+  // Other Mode Actions
   startCustomTextGame: (text: string) => void;
+  startEnduranceGame: () => void;
 
   // Course Actions
   startCourseLesson: (lesson: CourseLesson) => void;
@@ -147,7 +119,7 @@ interface AppState {
   addPartyPlayer: (name: string) => void;
   removePartyPlayer: (name: string) => void;
   startPartySetup: () => void;
-  startPartyGame: () => void;
+  startPartyGame: () => Promise<void>;
   nextPartyTurn: () => void;
   prepareNextPartyTurn: () => void;
 
@@ -157,7 +129,6 @@ interface AppState {
   buyItem: (itemId: string) => void;
   startBossBattle: (bossId: string) => void;
   confirmStartBossBattle: () => Promise<void>;
-
 
   toggleMute: () => void;
   setShowStatsModal: (show: boolean) => void;
@@ -182,15 +153,14 @@ export const useStore = create<AppState>((set, get) => ({
   gameState: GameState.CHARACTER_CREATION,
   playerName: '',
   raceMode: null,
-  raceTheme: RaceTheme.HARRY_POTTER, // Default theme
   textToType: '',
   players: [],
   elapsedTime: 0,
-  textGenerationRequestCounter: 0,
   xpGainedThisRace: 0,
   coinsGainedThisRace: 0,
   rankCounter: 1,
   currentBossIntro: null,
+  currentMapNodeId: null,
   
   socketStatus: 'disconnected',
   onlineRooms: [],
@@ -209,6 +179,7 @@ export const useStore = create<AppState>((set, get) => ({
   playerStats: { wpm: 0, accuracy: 0, progress: 0, mistypedChars: {} },
   isFinished: false,
   wpmHistory: [],
+  lastMistakeTime: 0,
 
   isMuted: false,
   showStatsModal: false,
@@ -227,12 +198,7 @@ export const useStore = create<AppState>((set, get) => ({
   playerCharacter: characterService.getCharacterData(),
 
   // Actions
-  setGameState: (gameState) => {
-    set({ gameState });
-    if (gameState === GameState.LOBBY) {
-        get().resetLobby();
-    }
-  },
+  setGameState: (state) => set({ gameState: state }),
   setPlayerAndEvolution: (name, color, evolution) => {
     const tutorialSeen = localStorage.getItem('gemini-type-racer-tutorial-seen') === 'true';
 
@@ -242,7 +208,7 @@ export const useStore = create<AppState>((set, get) => ({
 
     set({ 
         playerName: name, 
-        gameState: GameState.LOBBY,
+        gameState: GameState.ADVENTURE_MAP,
         showTutorialModal: !tutorialSeen,
         courseProgress: courseService.getCourseProgress(),
         playerCharacter: newCharacter,
@@ -267,101 +233,60 @@ export const useStore = create<AppState>((set, get) => ({
       elapsedTime: 0,
     });
   },
-  setRaceMode: async (mode) => {
-    set({ raceMode: mode, raceTheme: mode.startsWith('SOLO') ? get().raceTheme : null });
-    if (mode === RaceMode.ONLINE_RACE) {
-        set({ gameState: GameState.ONLINE_LOBBY });
-        websocketService.sendMessage({type: 'getRoomList'});
-    } else if (mode === RaceMode.PARTY) {
-        get().startPartySetup();
-    } else if (mode === RaceMode.CUSTOM_TEXT) {
-        set({ gameState: GameState.CUSTOM_TEXT_SETUP });
-    } else if (mode === RaceMode.DAILY_CHALLENGE) {
-        set({ textToType: 'Loading daily challenge...' });
-        websocketService.sendMessage({ type: 'getDailyChallenge' });
-    } else {
-        await get().initializeGame();
+  startMapNodeActivity: async (nodeId) => {
+    const { playerCharacter, addToast, _resetTypingState } = get();
+    const node = mapService.getNodeById(nodeId);
+    if (!node) return;
+
+    if (node.type === 'SHOP') {
+      set({ gameState: GameState.SHOP });
+      return;
     }
-  },
-  setRaceTheme: (theme) => {
-    set({ raceTheme: theme });
-    if (get().raceMode && !get().raceMode?.startsWith('ONLINE') && get().raceMode !== 'DAILY_CHALLENGE') {
-      get().initializeGame();
+    if (node.type === 'TRAINING') {
+      set({ gameState: GameState.TRAINING_GROUND });
+      return;
     }
-  },
-  initializeGame: async () => {
-    const { playerName, raceMode, raceTheme, _resetTypingState, playerCharacter } = get();
-    if (!playerName || !raceMode) return;
-    if (raceMode.startsWith('SOLO') && !raceTheme) return;
+    if (node.type === 'BOSS') {
+      get().startBossBattle(node.bossId!);
+      return;
+    }
+    
+    // It's a RACE node
+    if (playerCharacter.energy < RACE_ENERGY_COST) {
+      addToast({ message: "Not enough energy to race!", type: 'error'});
+      return;
+    }
 
     _resetTypingState();
-    set({ textToType: 'Loading passage...', currentLesson: null, xpGainedThisRace: 0, coinsGainedThisRace: 0, rankCounter: 1 });
+    set({ 
+      textToType: 'Loading passage...', 
+      currentLesson: null, 
+      xpGainedThisRace: 0, 
+      coinsGainedThisRace: 0, 
+      rankCounter: 1,
+      raceMode: RaceMode.ADVENTURE,
+      currentMapNodeId: nodeId,
+    });
 
-    const currentRequestId = get().textGenerationRequestCounter + 1;
-    set({ textGenerationRequestCounter: currentRequestId });
-
-    const [baseWpm, range] = getBotWpmRange(raceMode);
+    const paragraph = await getTypingParagraph(RaceTheme.MOVIE_QUOTES, RaceMode.SOLO_MEDIUM);
     
-    let paragraph = '';
-    let initialPlayers: Player[] = [
-        { id: PLAYER_ID, name: playerName, isPlayer: true, progress: 0, wpm: 0, accuracy: 100, wpmHistory: [], character: playerCharacter },
+    const initialPlayers: Player[] = [
+        { id: PLAYER_ID, name: get().playerName, isPlayer: true, progress: 0, wpm: 0, accuracy: 100, wpmHistory: [], character: playerCharacter },
     ];
     
-    if (raceMode === RaceMode.GHOST) {
-        const ghostData: GhostData | null = JSON.parse(localStorage.getItem('gemini-type-racer-ghost') || 'null');
-        if (ghostData && ghostData.text) {
-            paragraph = ghostData.text;
-            initialPlayers.push({
-                id: 'ghost-1', name: 'Your Best', isPlayer: false, isGhost: true, progress: 0, wpm: 0, accuracy: 100,
-                targetWpm: ghostData.finalWpm, wpmHistory: ghostData.wpmHistory,
-            });
-        } else {
-             set({textToType: "Ghost data not found or is outdated. Please complete a race to set a new ghost.", raceMode: null}); 
-             return;
-        }
-    } else if (![RaceMode.PARTY, RaceMode.ONLINE_RACE, RaceMode.ENDURANCE, RaceMode.CUSTOM_TEXT, RaceMode.DAILY_CHALLENGE, RaceMode.COURSE, RaceMode.BOSS_BATTLE].includes(raceMode)) {
-         const fetchedParagraph = await getTypingParagraph(raceTheme!, raceMode);
-         if (get().textGenerationRequestCounter !== currentRequestId) return;
-         paragraph = fetchedParagraph;
-         
-         const numBots = raceMode === RaceMode.PUBLIC ? 4 : 2;
-         const botNamePool = [...BOT_NAMES].sort(() => 0.5 - Math.random());
-         const evolutions = [Evolution.ATHLETIC, Evolution.STAMINA, Evolution.INTELLECT];
-         for(let i=0; i<numBots; i++) {
-            const botEvolution = evolutions[i % evolutions.length];
-            const botCharacter = characterService.getDefaultCharacter(botEvolution);
-            botCharacter.color = BOT_COLORS[i % BOT_COLORS.length];
+    node.bots?.forEach((bot, i) => {
+        const botCharacter = characterService.getDefaultCharacter(bot.evolution);
+        botCharacter.color = BOT_COLORS[i % BOT_COLORS.length];
+        initialPlayers.push({
+            id: `bot-${i}`, name: bot.name, isPlayer: false, progress: 0, wpm: 0, accuracy: 98,
+            targetWpm: bot.targetWpm, mistakeCycles: 0,
+            character: botCharacter
+        });
+    });
 
-            initialPlayers.push({
-                id: `bot-${i}`, name: botNamePool[i], isPlayer: false, progress: 0, wpm: 0, accuracy: 98,
-                targetWpm: Math.floor(Math.random() * range) + baseWpm, mistakeCycles: 0,
-                character: botCharacter
-            });
-         }
-    } else if (raceMode === RaceMode.PARTY) {
-        const fetchedParagraph = await getTypingParagraph(RaceTheme.HARRY_POTTER, RaceMode.SOLO_MEDIUM);
-        if (get().textGenerationRequestCounter !== currentRequestId) return;
-        paragraph = fetchedParagraph;
-    } else if (raceMode === RaceMode.ENDURANCE) {
-        paragraph = generateEnduranceText();
-    }
-    
-    set({ players: initialPlayers, textToType: paragraph });
+    set({ players: initialPlayers, textToType: paragraph, elapsedTime: 0, gameState: GameState.COUNTDOWN });
   },
-  startGame: () => {
-    const { textToType, raceMode, playerCharacter, addToast } = get();
-    if (playerCharacter.energy < RACE_ENERGY_COST) {
-        addToast({ message: "Not enough energy to race!", type: 'error'});
-        return;
-    }
-    if (textToType && !textToType.startsWith('Loading')) {
-       if (raceMode === RaceMode.ONLINE_RACE) {
-            set({ gameState: GameState.COUNTDOWN });
-       } else {
-           set({ elapsedTime: 0, gameState: GameState.COUNTDOWN });
-       }
-    }
-  },
+
   updateGame: (deltaTime: number) => {
     set(state => {
         if (state.gameState !== GameState.TYPING || !state.raceMode) {
@@ -379,7 +304,6 @@ export const useStore = create<AppState>((set, get) => ({
             };
         }
 
-        const botBehavior = getBotBehavior(state.raceMode);
         const playerProgress = state.playerStats.progress || 0;
         let rank = state.rankCounter;
         
@@ -401,12 +325,12 @@ export const useStore = create<AppState>((set, get) => ({
                 if (p.mistakeCycles && p.mistakeCycles > 0) {
                   return { ...p, mistakeCycles: p.mistakeCycles - 1 };
                 }
-                if (state.raceMode !== RaceMode.BOSS_BATTLE && Math.random() < botBehavior.mistakeChance) {
-                  return { ...p, mistakeCycles: botBehavior.mistakeDuration };
+                if (Math.random() < 0.03) { // Generic mistake chance
+                  return { ...p, mistakeCycles: 2 };
                 }
                 const isFallingBehind = !p.isPlayer && playerProgress > 10 && p.progress < playerProgress - 20;
                 const targetWpm = p.targetWpm || 60;
-                const randomFactor = (state.raceMode === RaceMode.BOSS_BATTLE) ? 0 : (Math.random() - 0.5) * botBehavior.wpmFluctuation;
+                const randomFactor = (Math.random() - 0.5) * 20;
                 const wpmBoost = isFallingBehind ? 15 : 0;
                 currentWpm = Math.max(20, targetWpm + randomFactor + wpmBoost);
                 const charsPerSecond = (currentWpm * 5) / 60;
@@ -524,8 +448,16 @@ export const useStore = create<AppState>((set, get) => ({
                     finalCharacterState = {
                         ...finalCharacterState,
                         defeatedBosses: [...finalCharacterState.defeatedBosses, bossInRace.id],
+                        mapProgress: Math.max(state.playerCharacter.mapProgress, state.currentMapNodeId!),
                     };
                 }
+            } else if (state.raceMode === RaceMode.ADVENTURE) {
+                 if (player.rank === 1 && state.currentMapNodeId) {
+                     finalCharacterState = {
+                         ...finalCharacterState,
+                         mapProgress: Math.max(state.playerCharacter.mapProgress, state.currentMapNodeId),
+                     }
+                 }
             }
 
             finalCharacterState = {
@@ -539,7 +471,7 @@ export const useStore = create<AppState>((set, get) => ({
                 wpm: state.playerStats.wpm, 
                 accuracy: state.playerStats.accuracy, 
                 rank: player.rank!, 
-                theme: state.raceTheme, 
+                theme: RaceTheme.MOVIE_QUOTES, 
                 mode: state.raceMode, 
                 stats: newPersistentStats,
                 level: finalCharacterState.level,
@@ -592,10 +524,9 @@ export const useStore = create<AppState>((set, get) => ({
 
     set({ achievements: getAchievements(), leaderboard: getLeaderboard(), unlockedCustomizations: customizationService.getUnlocked() });
   },
-  resetLobby: () => {
+  returnToMap: () => {
     get()._resetTypingState();
-    get().leaveOnlineRoom();
-    set({ raceMode: null, textToType: '', players: [], elapsedTime: 0, partyPlayers: [], currentPartyPlayerIndex: 0, currentLesson: null });
+    set({ raceMode: null, textToType: '', players: [], elapsedTime: 0, partyPlayers: [], currentPartyPlayerIndex: 0, currentLesson: null, gameState: GameState.ADVENTURE_MAP });
   },
   _addXp: (amount) => {
     const { playerCharacter, addToast } = get();
@@ -623,92 +554,74 @@ export const useStore = create<AppState>((set, get) => ({
   },
   
   // Online Actions
-  setSocketStatus: (status) => {
-    set({ socketStatus: status });
-  },
+  setSocketStatus: (status) => set({ socketStatus: status }),
   handleServerMessage: (message) => {
     switch (message.type) {
-        case 'roomList':
-            set({ onlineRooms: message.rooms });
-            break;
-        case 'joinedRoom':
+        case 'roomList': set({ onlineRooms: message.rooms }); break;
+        case 'joinedRoom': {
             const evolutionsOnline = [Evolution.ATHLETIC, Evolution.STAMINA, Evolution.INTELLECT];
             const players = message.room.players.map((p, index) => {
                 const character = characterService.getDefaultCharacter(evolutionsOnline[index % evolutionsOnline.length]);
                 character.color = BOT_COLORS[Math.floor(Math.random() * BOT_COLORS.length)];
                 const isMe = p.id === message.yourId;
                 return {
-                    id: p.id,
-                    name: p.name,
-                    isPlayer: isMe,
-                    progress: 0, wpm: 0, accuracy: 100,
+                    id: p.id, name: p.name, isPlayer: isMe, progress: 0, wpm: 0, accuracy: 100,
                     character: isMe ? get().playerCharacter : character,
                 };
             });
             set({ currentRoomId: message.room.id, players, myId: message.yourId });
             break;
-        case 'playerJoined':
+        }
+        case 'playerJoined': {
              const newPlayerEvolution = [Evolution.ATHLETIC, Evolution.STAMINA, Evolution.INTELLECT][Math.floor(Math.random()*3)];
              const newPlayerCharacter = characterService.getDefaultCharacter(newPlayerEvolution);
              newPlayerCharacter.color = BOT_COLORS[Math.floor(Math.random() * BOT_COLORS.length)];
              set(state => ({ players: [...state.players, { id: message.player.id, name: message.player.name, isPlayer: false, progress: 0, wpm: 0, accuracy: 100, character: newPlayerCharacter}] }));
              break;
-        case 'playerLeft':
-             set(state => ({ players: state.players.filter(p => p.id !== message.playerId) }));
-             break;
-        case 'raceStarting':
-            set({ onlineCountdown: message.countdown });
-            break;
-        case 'raceStart':
-            set(state => {
+        }
+        case 'playerLeft': set(state => ({ players: state.players.filter(p => p.id !== message.playerId) })); break;
+        case 'raceStarting': set({ onlineCountdown: message.countdown, gameState: GameState.COUNTDOWN }); break;
+        case 'raceStart': set(state => {
                 const updatedPlayers = state.players.map(p => ({ ...p, progress: 0, wpm: 0, rank: undefined }));
                 return { gameState: GameState.TYPING, elapsedTime: 0, onlineCountdown: 0, players: updatedPlayers };
-            });
-            break;
-        case 'progressUpdate':
-            set(state => ({
-                players: state.players.map(p => p.id === message.playerId ? { ...p, progress: message.progress, wpm: message.wpm } : p)
-            }));
-            break;
-        case 'playerFinished':
-            set(state => {
+            }); break;
+        case 'progressUpdate': set(state => ({ players: state.players.map(p => p.id === message.playerId ? { ...p, progress: message.progress, wpm: message.wpm } : p) })); break;
+        case 'playerFinished': set(state => {
                 let rank = state.players.filter(p => p.rank).length + 1;
-                return {
-                    players: state.players.map(p => p.id === message.playerId ? { ...p, progress: 100, wpm: message.wpm, accuracy: message.accuracy, rank } : p)
-                }
-            });
-            break;
-        case 'dailyChallenge':
+                return { players: state.players.map(p => p.id === message.playerId ? { ...p, progress: 100, wpm: message.wpm, accuracy: message.accuracy, rank } : p) }
+            }); break;
+        case 'dailyChallenge': {
             get()._resetTypingState();
             set(state => ({ 
-                textToType: message.text,
+                textToType: message.text, raceMode: RaceMode.DAILY_CHALLENGE,
                 rankCounter: 1,
                 players: [{
-                    id: PLAYER_ID, 
-                    name: state.playerName, 
-                    isPlayer: true, 
+                    id: PLAYER_ID, name: state.playerName, isPlayer: true, 
                     progress: 0, wpm: 0, accuracy: 100, wpmHistory: [],
                     character: state.playerCharacter,
                 }]
             }));
+            set({ gameState: GameState.COUNTDOWN });
             break;
-        case 'error':
-            get().addToast({ message: message.message, type: 'error' });
-            break;
+        }
+        case 'error': get().addToast({ message: message.message, type: 'error' }); break;
     }
   },
   connectToServer: () => websocketService.connect(),
   createOnlineRoom: () => websocketService.sendMessage({ type: 'createRoom', playerName: get().playerName }),
   joinOnlineRoom: (roomId) => websocketService.sendMessage({ type: 'joinRoom', roomId, playerName: get().playerName }),
-  leaveOnlineRoom: () => {
-    set({ currentRoomId: null, players: [], myId: null });
-  },
+  leaveOnlineRoom: () => set({ currentRoomId: null, players: [], myId: null }),
 
   startCustomTextGame: (text) => {
     if (!text.trim()) return;
     get()._resetTypingState();
-    set({ textToType: text.trim(), players: [{ id: PLAYER_ID, name: get().playerName, isPlayer: true, progress: 0, wpm: 0, accuracy: 100, character: get().playerCharacter }], rankCounter: 1 });
-    get().startGame();
+    set({ textToType: text.trim(), players: [{ id: PLAYER_ID, name: get().playerName, isPlayer: true, progress: 0, wpm: 0, accuracy: 100, character: get().playerCharacter }], rankCounter: 1, raceMode: RaceMode.CUSTOM_TEXT });
+    set({ gameState: GameState.COUNTDOWN });
+  },
+  startEnduranceGame: () => {
+    get()._resetTypingState();
+    set({ textToType: generateEnduranceText(), players: [{ id: PLAYER_ID, name: get().playerName, isPlayer: true, progress: 0, wpm: 0, accuracy: 100, character: get().playerCharacter }], rankCounter: 1, raceMode: RaceMode.ENDURANCE });
+    set({ gameState: GameState.COUNTDOWN });
   },
 
   // Course Actions
@@ -717,7 +630,7 @@ export const useStore = create<AppState>((set, get) => ({
     set({
       raceMode: RaceMode.COURSE,
       currentLesson: lesson,
-      textToType: lesson.text,
+      textToType: courseService.generateTextForLesson(lesson),
       players: [{ id: PLAYER_ID, name: get().playerName, isPlayer: true, progress: 0, wpm: 0, accuracy: 100, character: get().playerCharacter }],
       elapsedTime: 0,
       gameState: GameState.COUNTDOWN,
@@ -728,66 +641,40 @@ export const useStore = create<AppState>((set, get) => ({
   // Party Race Actions
   addPartyPlayer: (name) => {
     set(state => {
-        if (state.partyPlayers.length >= 4 || state.partyPlayers.find(p => p.name.toLowerCase() === name.toLowerCase()) || !name.trim()) {
-            return state;
-        }
+        if (state.partyPlayers.length >= 4 || state.partyPlayers.find(p => p.name.toLowerCase() === name.toLowerCase()) || !name.trim()) return state;
         return { partyPlayers: [...state.partyPlayers, { name: name.trim(), wpm: 0, accuracy: 0 }] };
     });
   },
-  removePartyPlayer: (name) => {
-    set(state => ({ partyPlayers: state.partyPlayers.filter(p => p.name !== name) }));
-  },
-  startPartySetup: () => {
-    set({
-        gameState: GameState.PARTY_SETUP,
-        raceMode: RaceMode.PARTY,
-        partyPlayers: [],
-        currentPartyPlayerIndex: 0
-    });
-    get().initializeGame();
-  },
-  startPartyGame: () => {
+  removePartyPlayer: (name) => set(state => ({ partyPlayers: state.partyPlayers.filter(p => p.name !== name) })),
+  startPartySetup: () => set({ gameState: GameState.PARTY_SETUP, raceMode: RaceMode.PARTY, partyPlayers: [], currentPartyPlayerIndex: 0 }),
+  startPartyGame: async () => {
     if (get().partyPlayers.length === 0) return;
     const firstPlayerName = get().partyPlayers[0].name;
+    const text = await getTypingParagraph(RaceTheme.HARRY_POTTER, RaceMode.SOLO_MEDIUM);
     set({
         players: [{ id: PLAYER_ID, name: firstPlayerName, isPlayer: true, progress: 0, wpm: 0, accuracy: 100, character: get().playerCharacter }],
         gameState: GameState.COUNTDOWN,
+        textToType: text,
     });
   },
   nextPartyTurn: () => {
     const { playerStats, currentPartyPlayerIndex, partyPlayers } = get();
-
     const updatedPartyPlayers = [...partyPlayers];
-    updatedPartyPlayers[currentPartyPlayerIndex] = {
-        ...updatedPartyPlayers[currentPartyPlayerIndex],
-        wpm: playerStats.wpm,
-        accuracy: playerStats.accuracy
-    };
-
+    updatedPartyPlayers[currentPartyPlayerIndex] = { ...updatedPartyPlayers[currentPartyPlayerIndex], wpm: playerStats.wpm, accuracy: playerStats.accuracy };
     const nextIndex = currentPartyPlayerIndex + 1;
-
     if (nextIndex >= partyPlayers.length) {
-        const finalRankedPlayers = updatedPartyPlayers
-            .sort((a, b) => b.wpm - a.wpm || b.accuracy - a.accuracy)
-            .map((p, i) => ({ ...p, rank: i + 1 }));
+        const finalRankedPlayers = updatedPartyPlayers.sort((a, b) => b.wpm - a.wpm || b.accuracy - a.accuracy).map((p, i) => ({ ...p, rank: i + 1 }));
         set({ partyPlayers: finalRankedPlayers, gameState: GameState.RESULTS });
         soundService.playRaceFinish(true);
     } else {
-        set({
-            partyPlayers: updatedPartyPlayers,
-            currentPartyPlayerIndex: nextIndex,
-            gameState: GameState.PARTY_TRANSITION,
-        });
+        set({ partyPlayers: updatedPartyPlayers, currentPartyPlayerIndex: nextIndex, gameState: GameState.PARTY_TRANSITION });
     }
   },
   prepareNextPartyTurn: () => {
     get()._resetTypingState();
     const { partyPlayers, currentPartyPlayerIndex } = get();
     const nextPlayerName = partyPlayers[currentPartyPlayerIndex].name;
-    set(state => ({
-        players: [{ ...state.players[0], name: nextPlayerName }],
-        gameState: GameState.COUNTDOWN,
-    }));
+    set(state => ({ players: [{ ...state.players[0], name: nextPlayerName }], gameState: GameState.COUNTDOWN }));
   },
 
   startTraining: (stat) => {
@@ -796,21 +683,17 @@ export const useStore = create<AppState>((set, get) => ({
         addToast({ message: "Not enough energy to train!", type: 'error' });
         return;
     }
-    
     const newCharacter = { ...playerCharacter, energy: playerCharacter.energy - TRAINING_ENERGY_COST };
     characterService.saveCharacterData(newCharacter);
     set({ playerCharacter: newCharacter });
-
     if (stat === 'running') set({ gameState: GameState.TRAINING_RUNNING });
     if (stat === 'swimming') set({ gameState: GameState.TRAINING_SWIMMING });
     if (stat === 'flying') set({ gameState: GameState.TRAINING_FLYING });
   },
   finishTraining: (stat, score) => {
     const { playerCharacter, addToast } = get();
-    // Award XP based on score. Simple linear conversion for now.
     const xpGained = Math.round(score * 2.5); 
     addToast({ message: `Gained ${xpGained} ${stat} XP!`, type: 'success' });
-
     const newCharacterState = characterService.addStatXp(playerCharacter, stat, xpGained);
     characterService.saveCharacterData(newCharacterState);
     set({ playerCharacter: newCharacterState, gameState: GameState.TRAINING_GROUND });
@@ -831,59 +714,38 @@ export const useStore = create<AppState>((set, get) => ({
     const boss = allBosses.find(b => b.id === bossId);
     if (!boss) return;
     const { playerCharacter, addToast } = get();
-
     if (playerCharacter.coins < boss.entryFee) {
         addToast({ message: `Not enough coins! Entry fee is ${boss.entryFee}.`, type: 'error'});
         return;
     }
-    
-    set({ currentBossIntro: boss, gameState: GameState.BOSS_INTRO });
+    const node = mapService.getNodeByBossId(bossId);
+    set({ currentBossIntro: boss, gameState: GameState.BOSS_INTRO, currentMapNodeId: node?.id || null });
   },
   confirmStartBossBattle: async () => {
     const { playerCharacter, addToast, _resetTypingState, currentBossIntro } = get();
     if (!currentBossIntro) return;
     const boss = currentBossIntro;
-
-    // Check skill requirements
-    if (playerCharacter.running < boss.skillRequirements.running ||
-        playerCharacter.swimming < boss.skillRequirements.swimming ||
-        playerCharacter.flying < boss.skillRequirements.flying) {
+    if (playerCharacter.running < boss.skillRequirements.running || playerCharacter.swimming < boss.skillRequirements.swimming || playerCharacter.flying < boss.skillRequirements.flying) {
         addToast({ message: 'Your skills are not high enough to challenge this boss!', type: 'error' });
-        set({ gameState: GameState.TOURNAMENT_LOBBY, currentBossIntro: null });
+        set({ gameState: GameState.ADVENTURE_MAP, currentBossIntro: null });
         return;
     }
-    
     if (playerCharacter.energy < RACE_ENERGY_COST) {
         addToast({ message: "Not enough energy to race!", type: 'error' });
-        set({ gameState: GameState.TOURNAMENT_LOBBY, currentBossIntro: null });
+        set({ gameState: GameState.ADVENTURE_MAP, currentBossIntro: null });
         return;
     }
-
-    // Deduct entry fee
     const newCharacter = { ...playerCharacter, coins: playerCharacter.coins - boss.entryFee };
     characterService.saveCharacterData(newCharacter);
     set({ playerCharacter: newCharacter });
-
-
     _resetTypingState();
     set({ textToType: 'Loading passage...', raceMode: RaceMode.BOSS_BATTLE, rankCounter: 1 });
-
-    const paragraph = await getTypingParagraph(RaceTheme.MOVIE_QUOTES, RaceMode.SOLO_MEDIUM);
-
+    const paragraph = await getTypingParagraph(RaceTheme.MOVIE_QUOTES, RaceMode.SOLO_HARD);
     const players: Player[] = [
         { id: PLAYER_ID, name: get().playerName, isPlayer: true, progress: 0, wpm: 0, accuracy: 100, wpmHistory: [], character: playerCharacter },
-        { 
-            id: boss.id, 
-            name: boss.name, 
-            isPlayer: false, 
-            progress: 0, wpm: 0, accuracy: 99,
-            targetWpm: boss.wpm,
-            character: boss.character,
-        },
+        { id: boss.id, name: boss.name, isPlayer: false, progress: 0, wpm: 0, accuracy: 99, targetWpm: boss.wpm, character: boss.character },
     ];
-
-    set({ players, textToType: paragraph, currentBossIntro: null });
-    get().startGame();
+    set({ players, textToType: paragraph, currentBossIntro: null, gameState: GameState.COUNTDOWN, elapsedTime: 0 });
   },
 
 
@@ -895,9 +757,7 @@ export const useStore = create<AppState>((set, get) => ({
   setShowCharacterModal: (show) => set({ showCharacterModal: show }),
   setShowTutorialModal: (show) => {
     set({ showTutorialModal: show });
-    if (!show) {
-        localStorage.setItem('gemini-type-racer-tutorial-seen', 'true');
-    }
+    if (!show) localStorage.setItem('gemini-type-racer-tutorial-seen', 'true');
   },
   applySoundPack: (packId) => {
     const newSettings: PlayerSettings = { ...get().playerSettings, activeSoundPackId: packId };
@@ -909,12 +769,9 @@ export const useStore = create<AppState>((set, get) => ({
     const { playerCharacter } = get();
     const item = characterService.allCustomizationItems.find(i => i.id === itemId);
     if (!item) return;
-
     const newCharacter = { ...playerCharacter };
     const currentlyEquippedId = newCharacter.equippedItems[item.type];
-    
     newCharacter.equippedItems[item.type] = currentlyEquippedId === itemId ? null : itemId;
-    
     characterService.saveCharacterData(newCharacter);
     set({ playerCharacter: newCharacter });
   },
@@ -931,95 +788,78 @@ export const useStore = create<AppState>((set, get) => ({
     storeRefs.mistypedChars = {};
     if (storeRefs.enduranceTimer) clearTimeout(storeRefs.enduranceTimer);
     storeRefs.enduranceTimer = null;
-    
-    set({
-        typed: '',
-        errors: new Set(),
-        playerStats: { wpm: 0, accuracy: 0, progress: 0, mistypedChars: {} },
-        isFinished: false,
-        wpmHistory: [],
-    });
+    set({ typed: '', errors: new Set(), playerStats: { wpm: 0, accuracy: 0, progress: 0, mistypedChars: {} }, isFinished: false, wpmHistory: [], lastMistakeTime: 0 });
   },
   _calculateStats: () => {
     set(state => {
         if (!storeRefs.startTime) return state;
-
         const now = Date.now();
-        const elapsedTime = (now - storeRefs.startTime) / 1000 / 60; // in minutes
+        const elapsedTime = (now - storeRefs.startTime) / 1000 / 60;
         if (elapsedTime === 0) return state;
-        
         const typedChars = state.typed.length;
         const wpm = (typedChars / 5) / elapsedTime;
-        
         const correctChars = typedChars - state.errors.size;
         const accuracy = typedChars > 0 ? (correctChars / typedChars) * 100 : 100;
-        
         const progress = (state.textToType.length > 0) ? (typedChars / state.textToType.length) * 100 : 0;
-
-        const newStats: TypingStats = {
-            wpm: Math.round(wpm),
-            accuracy: Math.round(accuracy),
-            progress: progress,
-            mistypedChars: storeRefs.mistypedChars
-        };
-        
+        const newStats: TypingStats = { wpm: Math.round(wpm), accuracy: Math.round(accuracy), progress, mistypedChars: storeRefs.mistypedChars };
         let newWpmHistory = state.wpmHistory;
         if (now - storeRefs.lastHistoryPushTime > 2000) {
             newWpmHistory = [...state.wpmHistory, { time: (now - storeRefs.startTime!) / 1000, wpm: newStats.wpm, progress: newStats.progress }];
             storeRefs.lastHistoryPushTime = now;
         }
-
         const isFinished = state.raceMode !== RaceMode.ENDURANCE && typedChars >= state.textToType.length && state.textToType.length > 0;
-        
+        if (isFinished && state.gameState === GameState.TYPING) {
+            const finalWpm = Math.round(((correctChars / 5) / ((now - storeRefs.startTime) / 1000 / 60)));
+            newStats.wpm = finalWpm;
+        }
         return { playerStats: newStats, wpmHistory: newWpmHistory, isFinished };
     });
   },
   handleKeyDown: (key, isBackspace) => {
-    set(state => {
-        if (state.gameState !== GameState.TYPING || state.isFinished) return {};
+    const state = get();
+    if (state.gameState !== GameState.TYPING || state.isFinished) return;
 
-        let newWpmHistory = state.wpmHistory;
-        if (!storeRefs.startTime) {
-            storeRefs.startTime = Date.now();
-            newWpmHistory = [{ time: 0, wpm: 0, progress: 0 }];
-            if (state.raceMode === RaceMode.ENDURANCE) {
-                storeRefs.enduranceTimer = window.setTimeout(() => {
-                    set({ isFinished: true });
-                }, ENDURANCE_DURATION_SECONDS * 1000);
-            }
+    if (state.raceMode === RaceMode.COURSE && !isBackspace && key !== state.textToType[state.typed.length]) {
+        soundService.playKeyStroke(true);
+        set({ lastMistakeTime: Date.now() });
+        return;
+    }
+
+    if (!storeRefs.startTime) {
+        storeRefs.startTime = Date.now();
+        set({ wpmHistory: [{ time: 0, wpm: 0, progress: 0 }] });
+        if (state.raceMode === RaceMode.ENDURANCE) {
+            storeRefs.enduranceTimer = window.setTimeout(() => set({ isFinished: true }), ENDURANCE_DURATION_SECONDS * 1000);
         }
-        
-        let newTyped = state.typed;
-        let newErrors = state.errors;
+    }
+    
+    let newTyped = state.typed;
+    let newErrors = state.errors;
 
-        if (isBackspace) {
-            if (state.typed.length === 0) return {};
-            soundService.playKeyStroke(true);
-            newTyped = state.typed.slice(0, -1);
-            if (state.errors.has(state.typed.length - 1)) {
-                newErrors = new Set(state.errors);
-                newErrors.delete(state.typed.length - 1);
-            }
-        } else if (key.length === 1) { 
-            if (state.typed.length < state.textToType.length) {
-                if (key === state.textToType[state.typed.length]) {
-                    soundService.playKeyStroke(false);
-                } else {
-                    soundService.playKeyStroke(true);
-                    const wrongChar = state.textToType[state.typed.length];
-                    storeRefs.mistypedChars[wrongChar] = (storeRefs.mistypedChars[wrongChar] || 0) + 1;
-                    newErrors = new Set(state.errors).add(state.typed.length);
-                }
-                newTyped = state.typed + key;
-            } else {
-                return {}; // Don't handle typing past the end
-            }
+    if (isBackspace) {
+        if (state.typed.length === 0) return;
+        soundService.playKeyStroke(true);
+        newTyped = state.typed.slice(0, -1);
+        if (state.errors.has(state.typed.length - 1)) {
+            newErrors = new Set(state.errors);
+            newErrors.delete(state.typed.length - 1);
+        }
+    } else if (key.length === 1) { 
+        if (state.typed.length >= state.textToType.length && state.raceMode !== RaceMode.ENDURANCE) return;
+        if (key === state.textToType[state.typed.length]) {
+            soundService.playKeyStroke(false);
         } else {
-            return {}; // Not a character or backspace
+            soundService.playKeyStroke(true);
+            const wrongChar = state.textToType[state.typed.length];
+            storeRefs.mistypedChars[wrongChar] = (storeRefs.mistypedChars[wrongChar] || 0) + 1;
+            newErrors = new Set(state.errors).add(state.typed.length);
         }
+        newTyped = state.typed + key;
+    } else {
+        return;
+    }
 
-        return { typed: newTyped, errors: newErrors, wpmHistory: newWpmHistory };
-    });
+    set({ typed: newTyped, errors: newErrors });
     get()._calculateStats();
   },
 }));

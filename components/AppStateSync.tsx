@@ -100,7 +100,8 @@ export const AppStateSync: React.FC = () => {
             const isInOnlineMode = gameState === GameState.ONLINE_LOBBY || raceMode === RaceMode.ONLINE_RACE;
             if (isInOnlineMode) {
                 addToast({ message: "Connection lost. Returning to lobby.", type: 'error' });
-                setGameState(GameState.LOBBY);
+                // Fix: Corrected GameState.LOBBY to GameState.ONLINE_LOBBY as GameState.LOBBY does not exist.
+                setGameState(GameState.ONLINE_LOBBY);
             } else {
                 addToast({ message: "Connection to server failed. Online features are unavailable.", type: 'error' });
             }

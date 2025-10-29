@@ -16,15 +16,15 @@ const Toast: React.FC<{ toast: ToastType; onRemove: (id: string) => void }> = ({
     return () => clearTimeout(exitTimer);
   }, [toast.id, onRemove]);
 
-  const bgColor = {
-    success: 'bg-green-500',
-    info: 'bg-cyan-500',
-    error: 'bg-red-500',
+  const themeClasses = {
+    success: 'bg-[var(--dl-green)] border-[var(--dl-green-shadow)]',
+    info: 'bg-[var(--dl-blue)] border-[var(--dl-blue-shadow)]',
+    error: 'bg-[var(--dl-red)] border-[var(--dl-red-shadow)]',
   }[toast.type];
 
   return (
     <div
-      className={`p-4 rounded-lg shadow-lg text-white font-semibold ${bgColor} ${isExiting ? 'animate-slideOut' : 'animate-slideIn'}`}
+      className={`p-4 rounded-lg shadow-lg text-white font-semibold border-b-4 ${themeClasses} ${isExiting ? 'animate-slideOut' : 'animate-slideIn'}`}
       role="alert"
       aria-live="assertive"
     >
@@ -38,7 +38,7 @@ const ToastContainer: React.FC = () => {
   const removeToast = useStore(state => state.removeToast);
 
   return (
-    <div className="fixed top-4 right-4 z-50 space-y-2">
+    <div className="fixed top-20 right-4 z-50 space-y-2">
       {toasts.map(toast => (
         <Toast key={toast.id} toast={toast} onRemove={removeToast} />
       ))}

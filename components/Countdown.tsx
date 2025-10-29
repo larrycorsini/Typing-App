@@ -24,8 +24,8 @@ const Countdown: React.FC<CountdownProps> = ({ onComplete }) => {
   const displayText = count > 0 ? count : 'Go!';
 
   return (
-    <div className="absolute inset-0 bg-slate-900/80 flex items-center justify-center z-20 backdrop-blur-sm">
-      <div key={count} className="text-9xl font-bold text-cyan-400 animate-countdownZoom">
+    <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
+      <div key={count} className="text-9xl font-bold dl-title-text animate-countdownZoom">
         {displayText}
       </div>
     </div>

@@ -8,7 +8,7 @@ interface WpmChartProps {
 
 const WpmChart: React.FC<WpmChartProps> = ({ data }) => {
   if (data.length < 2) {
-    return <div className="text-center text-slate-500 p-4">Not enough data for a WPM chart.</div>;
+    return <div className="text-center text-[var(--dl-text)] opacity-60 p-4">Not enough data for a WPM chart.</div>;
   }
 
   const width = 350;
@@ -24,24 +24,24 @@ const WpmChart: React.FC<WpmChartProps> = ({ data }) => {
   const path = data.map(d => `${getX(d.time)},${getY(d.wpm)}`).join(' ');
 
   return (
-    <div className="bg-slate-700/50 p-2 rounded-lg mt-4">
+    <div className="bg-[#e9ddb8] p-2 rounded-lg mt-4">
       <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto">
-        <text x={padding} y={padding} fill="#94a3b8" fontSize="10" dominantBaseline="hanging">
+        <text x={padding} y={padding} fill="var(--dl-text)" opacity="0.7" fontSize="10" dominantBaseline="hanging">
           {Math.round(maxWpm)} WPM
         </text>
-        <text x={width - padding} y={height - padding / 2} fill="#94a3b8" fontSize="10" textAnchor="end">
+        <text x={width - padding} y={height - padding / 2} fill="var(--dl-text)" opacity="0.7" fontSize="10" textAnchor="end">
           {Math.round(maxTime)}s
         </text>
         <polyline
           fill="none"
-          stroke="#22d3ee"
+          stroke="var(--dl-blue-shadow)"
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
           points={path}
         />
       </svg>
-      <p className="text-center text-xs text-slate-400 mt-1">WPM Over Time</p>
+      <p className="text-center text-xs text-[var(--dl-text)] opacity-70 mt-1">WPM Over Time</p>
     </div>
   );
 };

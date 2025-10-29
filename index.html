@@ -24,6 +24,8 @@
         --dl-blue-shadow: #2c77c1;
         --dl-red: #e74c3c;
         --dl-red-shadow: #c0392b;
+        --dl-green: #86c73b;
+        --dl-green-shadow: #6ca32b;
         --dl-font: 'Fredoka One', cursive;
       }
       
@@ -193,7 +195,7 @@
         opacity: 0.6;
         cursor: not-allowed;
         transform: none !important;
-        box-shadow: 0 6px 0 rgba(0,0,0,0.3) !important;
+        box-shadow: 0 6px 0 var(--dl-panel-border) !important;
       }
       
       .btn-primary {
@@ -223,27 +225,16 @@
         transform: translateY(4px);
         box-shadow: 0 2px 0 var(--dl-blue-shadow);
       }
-
-      .btn-mode {
-        font-family: var(--dl-font);
-        font-weight: 600;
-        padding: 0.5rem 1rem;
-        font-size: 0.875rem;
-        border-radius: 0.5rem;
-        border: 2px solid var(--dl-text);
-        background-color: #fff;
-        color: var(--dl-text);
+      .btn-danger {
+        background-color: var(--dl-red);
+        border-color: var(--dl-panel-border);
+        box-shadow: 0 6px 0 var(--dl-red-shadow);
       }
-      .btn-mode:not(:disabled):hover {
-        background-color: #fefae0;
+      .btn-success {
+        background-color: var(--dl-green);
+        border-color: var(--dl-panel-border);
+        box-shadow: 0 6px 0 var(--dl-green-shadow);
       }
-      .btn-mode.active { color: white; border-color: var(--dl-text); }
-      .btn-mode.active-easy { background-color: #22c55e; }
-      .btn-mode.active-medium { background-color: #eab308; }
-      .btn-mode.active-hard { background-color: #ef4444; }
-      .btn-mode.active-online { background-color: #0ea5e9; }
-      .btn-mode.active-ghost { background-color: #a855f7; }
-      .btn-mode.active-party { background-color: #ec4899; }
       
       .dl-header {
         background-color: var(--dl-panel-bg);
@@ -302,6 +293,93 @@
         color: var(--dl-yellow);
         text-shadow: 3px 3px 0 var(--dl-text);
       }
+      
+      .modal-backdrop {
+        position: absolute;
+        inset: 0;
+        background-color: rgba(0,0,0,0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 20;
+        backdrop-filter: blur(4px);
+      }
+      
+      .dl-modal {
+        background-color: var(--dl-panel-bg);
+        border: 4px solid var(--dl-panel-border);
+        border-radius: 20px;
+        padding: 2rem;
+        box-shadow: 0 8px 0 var(--dl-panel-border);
+        width: 100%;
+        max-width: 32rem; /* lg */
+      }
+      
+      /* Adventure Map Styles */
+      .adventure-map {
+          background-color: #a2e4fa; /* Light sky blue */
+          border: 4px solid var(--dl-panel-border);
+          border-radius: 20px;
+          width: 100%;
+          max-width: 900px;
+          height: 600px;
+          position: relative;
+          overflow: hidden;
+          background-image: linear-gradient(to top, var(--dl-grass) 0%, var(--dl-grass) 25%, transparent 25%);
+      }
+      .map-path {
+          position: absolute;
+          width: 100%;
+          height: 100%;
+          stroke: var(--dl-dirt);
+          stroke-width: 15px;
+          stroke-dasharray: 30 15;
+          stroke-linecap: round;
+          fill: none;
+      }
+      .map-node {
+          position: absolute;
+          transform: translate(-50%, -50%);
+          width: 60px;
+          height: 60px;
+          border: 4px solid var(--dl-panel-border);
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 2rem;
+          cursor: pointer;
+          transition: all 0.2s;
+          box-shadow: 0 4px 0 var(--dl-panel-border);
+      }
+      .map-node:hover {
+          transform: translate(-50%, -50%) scale(1.1);
+      }
+      .map-node--race { background-color: var(--dl-yellow); }
+      .map-node--training { background-color: var(--dl-blue); }
+      .map-node--shop { background-color: var(--dl-green); }
+      .map-node--boss { background-color: var(--dl-red); font-size: 2.5rem; }
+      
+      .map-node--completed {
+          background-color: #bca44a; /* Darker yellow */
+      }
+      .map-node--locked {
+          background-color: #a0a0a0;
+          cursor: not-allowed;
+          opacity: 0.7;
+      }
+      .map-node--locked:hover {
+          transform: translate(-50%, -50%);
+      }
+      .map-node--active {
+          animation: pulse 1.5s infinite;
+      }
+       @keyframes pulse {
+        0% { transform: translate(-50%, -50%) scale(1); }
+        50% { transform: translate(-50%, -50%) scale(1.1); box-shadow: 0 0 0 8px rgba(255, 255, 255, 0.5); }
+        100% { transform: translate(-50%, -50%) scale(1); }
+    }
+      
     </style>
   <script type="importmap">
 {

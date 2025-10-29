@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { GameState } from './types';
 import { useStore } from './store';
 
@@ -13,7 +13,7 @@ import CourseLobby from './components/CourseLobby';
 import TrainingGround from './components/TrainingGround';
 import Shop from './components/Shop';
 import TournamentLobby from './components/TournamentLobby';
-import Lobby from './components/Lobby';
+import AdventureMap from './components/AdventureMap';
 import TrainingRunning from './components/TrainingRunning';
 import TrainingSwimming from './components/TrainingSwimming';
 import TrainingFlying from './components/TrainingFlying';
@@ -36,14 +36,14 @@ const App: React.FC = () => {
       <div className="w-full max-w-5xl space-y-4 mb-6">
         {state.players.map(p => <PlayerCard key={p.id} player={p} />)}
       </div>
-      <TypingArea textToType={state.textToType} typed={state.typed} errors={state.errors} />
+      <TypingArea textToType={state.textToType} typed={state.typed} errors={state.errors} lastMistakeTime={state.lastMistakeTime} />
     </>
   );
 
   const renderContent = () => {
     switch(state.gameState) {
       case GameState.CHARACTER_CREATION: return <CharacterCreation onCharacterCreate={(name, color, evolution) => state.setPlayerAndEvolution(name, color, evolution)} />;
-      case GameState.LOBBY: return <Lobby />;
+      case GameState.ADVENTURE_MAP: return <AdventureMap />;
       case GameState.COURSE_LOBBY: return <CourseLobby />;
       case GameState.ONLINE_LOBBY: return <OnlineLobby />;
       case GameState.PARTY_SETUP: return <PartySetup />;

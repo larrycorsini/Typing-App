@@ -5,9 +5,9 @@ import CharacterDisplay from './CharacterDisplay';
 import { TRAINING_ENERGY_COST } from '../services/characterService';
 
 const StatBox: React.FC<{ label: string; value: string | number }> = ({ label, value }) => (
-  <div className="bg-slate-700 p-4 rounded-lg text-center">
-    <div className="text-3xl font-bold text-cyan-400">{value}</div>
-    <div className="text-sm text-slate-400 uppercase tracking-wider">{label}</div>
+  <div className="bg-[#e9ddb8] p-4 rounded-lg text-center">
+    <div className="text-3xl font-bold text-[var(--dl-blue-shadow)]">{value}</div>
+    <div className="text-sm opacity-80 uppercase tracking-wider">{label}</div>
   </div>
 );
 
@@ -21,20 +21,20 @@ const TrainingGround: React.FC = () => {
         return (
             <div>
                 <div className="flex justify-between text-sm font-semibold mb-1">
-                    <span className="text-slate-300">{label}</span>
-                    <span className="text-slate-400">{xp} / {xpToNext} XP</span>
+                    <span className="opacity-90">{label}</span>
+                    <span className="opacity-70">{xp} / {xpToNext} XP</span>
                 </div>
-                <div className="w-full h-3 bg-slate-800 rounded-full overflow-hidden border border-slate-600">
-                    <div className="bg-cyan-400 h-full rounded-full" style={{ width: `${percentage}%` }}></div>
+                <div className="w-full h-3 bg-white rounded-full overflow-hidden border-2 border-[var(--dl-text)]">
+                    <div className="bg-[var(--dl-blue)] h-full" style={{ width: `${percentage}%` }}></div>
                 </div>
             </div>
         )
     };
 
     return (
-        <div className="w-full max-w-3xl mx-auto text-center bg-slate-800 p-8 rounded-xl shadow-2xl border border-slate-700">
-            <h1 className="text-4xl md:text-5xl font-bold text-cyan-400 mb-2">Training Ground</h1>
-            <p className="text-slate-400 mb-6">Play minigames to earn stat XP and improve your duck's abilities!</p>
+        <div className="w-full max-w-3xl mx-auto text-center card">
+            <h1 className="text-4xl md:text-5xl font-bold mb-2">Training Ground</h1>
+            <p className="opacity-80 mb-6">Play minigames to earn stat XP and improve your duck's abilities!</p>
 
             <div className="flex flex-col md:flex-row items-center gap-8 mb-8">
                 <div className="md:w-1/3">
@@ -50,53 +50,53 @@ const TrainingGround: React.FC = () => {
                 </div>
             </div>
 
-            <div className="bg-slate-900/50 p-6 rounded-lg border border-slate-700">
-                <h2 className="text-2xl font-bold text-slate-200 mb-4">Train Skills (Cost: {TRAINING_ENERGY_COST} Energy)</h2>
+            <div className="bg-[#e9ddb8] p-6 rounded-lg border-2 border-[var(--dl-text)]">
+                <h2 className="text-2xl font-bold mb-4">Train Skills (Cost: {TRAINING_ENERGY_COST} Energy)</h2>
                 <div className="space-y-6">
-                    <div className="bg-slate-700 p-4 rounded-lg">
+                    <div className="bg-[var(--dl-panel-bg)] p-4 rounded-lg">
                         <div className="flex flex-col md:flex-row justify-between items-center mb-3">
                             <div>
-                                <h3 className="text-xl font-bold text-cyan-300">Running</h3>
-                                <p className="text-slate-400">Gives your duck a visual head start in races.</p>
+                                <h3 className="text-xl font-bold">Running</h3>
+                                <p className="opacity-80">Gives your duck a visual head start in races.</p>
                             </div>
                             <button
                                 onClick={() => startTraining('running')}
                                 disabled={!canTrain}
-                                className="bg-green-600 text-white font-bold py-3 px-6 rounded-lg text-lg hover:bg-green-500 focus:outline-none focus:ring-4 focus:ring-green-400/50 transition-all disabled:bg-slate-600 disabled:cursor-not-allowed transform hover:scale-105 mt-4 md:mt-0 w-full md:w-auto"
+                                className="btn btn-success mt-4 md:mt-0 w-full md:w-auto"
                             >
-                                Start Training
+                                Train
                             </button>
                         </div>
                         <StatProgress label="Running XP" xp={playerCharacter.runningXp} xpToNext={playerCharacter.runningXpToNextLevel} />
                     </div>
-                     <div className="bg-slate-700 p-4 rounded-lg">
+                     <div className="bg-[var(--dl-panel-bg)] p-4 rounded-lg">
                         <div className="flex flex-col md:flex-row justify-between items-center mb-3">
                             <div>
-                                <h3 className="text-xl font-bold text-cyan-300">Swimming</h3>
-                                <p className="text-slate-400">Reduces the slowdown from water hazards in races.</p>
+                                <h3 className="text-xl font-bold">Swimming</h3>
+                                <p className="opacity-80">Reduces the slowdown from water hazards in races.</p>
                             </div>
                             <button
                                 onClick={() => startTraining('swimming')}
                                 disabled={!canTrain}
-                                className="bg-green-600 text-white font-bold py-3 px-6 rounded-lg text-lg hover:bg-green-500 focus:outline-none focus:ring-4 focus:ring-green-400/50 transition-all disabled:bg-slate-600 disabled:cursor-not-allowed transform hover:scale-105 mt-4 md:mt-0 w-full md:w-auto"
+                                className="btn btn-success mt-4 md:mt-0 w-full md:w-auto"
                             >
-                                Start Training
+                                Train
                             </button>
                         </div>
                         <StatProgress label="Swimming XP" xp={playerCharacter.swimmingXp} xpToNext={playerCharacter.swimmingXpToNextLevel} />
                     </div>
-                     <div className="bg-slate-700 p-4 rounded-lg">
+                     <div className="bg-[var(--dl-panel-bg)] p-4 rounded-lg">
                         <div className="flex flex-col md:flex-row justify-between items-center mb-3">
                             <div>
-                                <h3 className="text-xl font-bold text-cyan-300">Flying</h3>
-                                <p className="text-slate-400">Helps your duck overcome hurdles in races.</p>
+                                <h3 className="text-xl font-bold">Flying</h3>
+                                <p className="opacity-80">Helps your duck overcome hurdles in races.</p>
                             </div>
                              <button
                                 onClick={() => startTraining('flying')}
                                 disabled={!canTrain}
-                                className="bg-green-600 text-white font-bold py-3 px-6 rounded-lg text-lg hover:bg-green-500 focus:outline-none focus:ring-4 focus:ring-green-400/50 transition-all disabled:bg-slate-600 disabled:cursor-not-allowed transform hover:scale-105 mt-4 md:mt-0 w-full md:w-auto"
+                                className="btn btn-success mt-4 md:mt-0 w-full md:w-auto"
                             >
-                                Start Training
+                                Train
                             </button>
                         </div>
                         <StatProgress label="Flying XP" xp={playerCharacter.flyingXp} xpToNext={playerCharacter.flyingXpToNextLevel} />
@@ -105,10 +105,10 @@ const TrainingGround: React.FC = () => {
             </div>
 
             <button
-                onClick={() => setGameState(GameState.LOBBY)}
-                className="mt-8 bg-slate-600 hover:bg-slate-500 text-white font-semibold py-3 px-6 rounded-lg transition-colors w-full md:w-auto"
+                onClick={() => setGameState(GameState.ADVENTURE_MAP)}
+                className="mt-8 btn btn-secondary"
             >
-                Back to Lobby
+                Back to Map
             </button>
         </div>
     );

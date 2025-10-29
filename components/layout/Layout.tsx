@@ -12,7 +12,7 @@ import StoryModal from '../StoryModal';
 import ToastContainer from '../Toast';
 import Countdown from '../Countdown';
 import ResultsModal from '../ResultsModal';
-import { GameState, RaceMode } from '../../types';
+import { GameState } from '../../types';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -22,12 +22,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const state = useStore();
 
   const handleResultsModalClose = () => {
-    if (state.raceMode === RaceMode.COURSE) {
-        state.setGameState(GameState.COURSE_LOBBY);
-    } else {
-        state.setGameState(GameState.LOBBY);
-    }
+    state.returnToMap();
   }
+
+  const showHeader = ![GameState.CHARACTER_CREATION, GameState.ADVENTURE_MAP].includes(state.gameState);
 
   return (
     <>
@@ -36,15 +34,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       {state.showTutorialModal && <TutorialModal />}
       <button 
         onClick={state.toggleMute} 
-        className="absolute top-4 left-4 w-12 h-12 bg-[rgba(var(--color-bg-secondary),0.8)] backdrop-blur-sm rounded-full flex items-center justify-center text-2xl border border-[rgb(var(--color-border))] hover:bg-[rgb(var(--color-bg-secondary))] transition-colors z-30" 
+        className="absolute top-4 left-4 w-12 h-12 bg-[var(--dl-panel-bg)] backdrop-blur-sm rounded-full flex items-center justify-center text-2xl border-4 border-[var(--dl-panel-border)] shadow-md hover:bg-yellow-100 transition-colors z-30" 
         aria-label={state.isMuted ? "Unmute sound" : "Mute sound"}
       >
         {state.isMuted ? '🔇' : '🔊'}
       </button>
 
-      {state.gameState !== GameState.CHARACTER_CREATION && <Header />}
+      {showHeader && <Header />}
 
-      <main className="min-h-screen flex flex-col items-center justify-center p-4 md:p-8 relative pt-24">
+      <main className={`min-h-screen flex flex-col items-center justify-center p-4 md:p-8 relative ${showHeader ? 'pt-24' : ''}`}>
         {children}
       </main>
 

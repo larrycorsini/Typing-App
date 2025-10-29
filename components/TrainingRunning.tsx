@@ -14,7 +14,10 @@ const generateText = () => {
 };
 
 const TrainingRunning: React.FC = () => {
-    const finishTraining = useStore(state => state.finishTraining);
+    const { finishTraining, lastMistakeTime } = useStore(state => ({ 
+        finishTraining: state.finishTraining,
+        lastMistakeTime: state.lastMistakeTime
+    }));
     const [timeLeft, setTimeLeft] = useState(TRAINING_DURATION);
     const [text, setText] = useState(generateText());
     const [typed, setTyped] = useState('');
@@ -65,11 +68,11 @@ const TrainingRunning: React.FC = () => {
     }, [handleKeyDown]);
 
     return (
-        <div className="w-full max-w-3xl text-center">
-            <h1 className="text-4xl font-bold text-cyan-400 mb-2">Running Training: Keyboard Dash</h1>
-            <p className="text-slate-400 mb-6">Type as many words as you can before the timer runs out!</p>
-            <div className="text-6xl font-bold text-amber-400 mb-6">{timeLeft}</div>
-            <TypingArea textToType={text} typed={typed} errors={errors} />
+        <div className="card w-full max-w-3xl text-center">
+            <h1 className="text-4xl font-bold mb-2">Running Training: Keyboard Dash</h1>
+            <p className="opacity-80 mb-6">Type as many words as you can before the timer runs out!</p>
+            <div className="text-6xl font-bold text-[var(--dl-yellow-shadow)] mb-6">{timeLeft}</div>
+            <TypingArea textToType={text} typed={typed} errors={errors} lastMistakeTime={lastMistakeTime} />
         </div>
     );
 };

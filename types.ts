@@ -8,7 +8,7 @@ export enum Evolution {
 
 export enum GameState {
   CHARACTER_CREATION = 'CHARACTER_CREATION',
-  LOBBY = 'LOBBY',
+  ADVENTURE_MAP = 'ADVENTURE_MAP',
   COUNTDOWN = 'COUNTDOWN',
   TYPING = 'TYPING',
   RESULTS = 'RESULTS',
@@ -24,19 +24,21 @@ export enum GameState {
   TRAINING_SWIMMING = 'TRAINING_SWIMMING',
   TRAINING_FLYING = 'TRAINING_FLYING',
   BOSS_INTRO = 'BOSS_INTRO',
+  OTHER_MODES = 'OTHER_MODES',
 }
 
 export enum RaceMode {
-  SOLO_EASY = 'SOLO_EASY',
+  SOLO_EASY = 'SOLO_EASY', // Kept for Gemini paragraph generation context
   SOLO_MEDIUM = 'SOLO_MEDIUM',
   SOLO_HARD = 'SOLO_HARD',
+  ADVENTURE = 'ADVENTURE',
   GHOST = 'GHOST',
-  PUBLIC = 'PUBLIC', // Kept for bot simulation, but less prominent
+  PUBLIC = 'PUBLIC',
   PARTY = 'PARTY',
   ONLINE_RACE = 'ONLINE_RACE',
   ENDURANCE = 'ENDURANCE',
   CUSTOM_TEXT = 'CUSTOM_TEXT',
-  DAILY_CHALLENGE = 'DAILY_CHALLENGE',
+  DAILY_CHALLENGE = 'DAILY_CHallenge',
   COURSE = 'COURSE',
   BOSS_BATTLE = 'BOSS_BATTLE',
 }
@@ -142,7 +144,9 @@ export interface TypingStats {
 export interface CourseLesson {
     id: number;
     title: string;
-    text: string;
+    text: string; // Fallback or static text
+    characterPool?: string; // e.g. "asdfjkl;"
+    wordPool?: string[]; // e.g. ["a", "sad", "lad"]
     goals: {
         wpm: number;
         accuracy: number;
@@ -201,6 +205,7 @@ export interface PlayerCharacter {
   coins: number;
   defeatedBosses: string[];
   inventory: Record<ConsumableItemId, number>;
+  mapProgress: number; // ID of the last completed map node
 }
 
 export interface Boss {
@@ -227,6 +232,24 @@ export interface League {
     name: string;
     bosses: Boss[];
 }
+
+// Adventure Map Types
+export type MapNodeType = 'RACE' | 'TRAINING' | 'SHOP' | 'BOSS';
+export interface MapNode {
+  id: number;
+  name: string;
+  type: MapNodeType;
+  position: { top: string; left: string };
+  // Race-specific properties
+  bots?: { name: string; targetWpm: number; evolution: Evolution }[];
+  // Boss-specific properties
+  bossId?: string;
+}
+export interface MapZone {
+    name: string;
+    nodes: MapNode[];
+}
+
 
 // WebSocket Types
 export interface RoomInfo {

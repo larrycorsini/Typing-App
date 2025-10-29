@@ -86,7 +86,8 @@ const getDefaultCharacter = (evolution: Evolution = Evolution.ATHLETIC): PlayerC
         flyingXp: 0,
         coins: 0,
         defeatedBosses: [],
-        inventory: { 'energy_seed': 0, 'focus_goggles': 0, 'wpm_booster': 0 }
+        inventory: { 'energy_seed': 0, 'focus_goggles': 0, 'wpm_booster': 0 },
+        mapProgress: 0,
     };
 
     let running = 1;
@@ -130,7 +131,7 @@ export const leagues: League[] = [
         name: 'Paddles',
         wpm: 40,
         skillRequirements: { running: 5, swimming: 1, flying: 1 },
-        character: { ...getDefaultCharacter(Evolution.ATHLETIC), color: '#a1a1aa', equippedItems: { hat: null, accessory: null } },
+        character: { ...getDefaultCharacter(Evolution.ATHLETIC), color: '#a1a1aa', equippedItems: { hat: null, accessory: null }, mapProgress: 0 },
         narrative: "Paddles is the gatekeeper of the Championship. He's fast on his feet and guards the first piece of the legendary Golden Keyboard.",
         taunt: "You think your little webbed feet can keep up with me? Unlikely!",
         entryFee: 50,
@@ -141,7 +142,7 @@ export const leagues: League[] = [
         name: 'Quackmire',
         wpm: 65,
         skillRequirements: { running: 10, swimming: 10, flying: 1 },
-        character: { ...getDefaultCharacter(Evolution.STAMINA), color: '#22c55e', equippedItems: { hat: null, accessory: 'bow_tie' } },
+        character: { ...getDefaultCharacter(Evolution.STAMINA), color: '#22c55e', equippedItems: { hat: null, accessory: 'bow_tie' }, mapProgress: 0 },
         narrative: "Quackmire rules the water hazards. His powerful strokes make him a formidable foe. He holds the second piece of the Golden Keyboard.",
         taunt: "The water slows you down, but it's where I feel most at home. Prepare to sink!",
         entryFee: 100,
@@ -158,7 +159,7 @@ export const leagues: League[] = [
         name: 'AeroDuck',
         wpm: 85,
         skillRequirements: { running: 15, swimming: 15, flying: 15 },
-        character: { ...getDefaultCharacter(Evolution.INTELLECT), color: '#3b82f6', equippedItems: { hat: 'propeller_hat', accessory: 'monocle' } },
+        character: { ...getDefaultCharacter(Evolution.INTELLECT), color: '#3b82f6', equippedItems: { hat: 'propeller_hat', accessory: 'monocle' }, mapProgress: 0 },
         narrative: "Master of the skies, AeroDuck soars over hurdles that leave others stumbling. The third piece of the Golden Keyboard is within his grasp.",
         taunt: "While you're tripping over hurdles, I'll be gliding to the finish line.",
         entryFee: 200,
@@ -169,7 +170,7 @@ export const leagues: League[] = [
         name: 'The Champion',
         wpm: 110,
         skillRequirements: { running: 25, swimming: 25, flying: 25 },
-        character: { ...getDefaultCharacter(Evolution.ATHLETIC), color: '#f59e0b', equippedItems: { hat: 'championship_crown', accessory: null } },
+        character: { ...getDefaultCharacter(Evolution.ATHLETIC), color: '#f59e0b', equippedItems: { hat: 'championship_crown', accessory: null }, mapProgress: 0 },
         narrative: "The final boss. The Champion has mastered all forms of typing and racing. Defeat him to reassemble the Golden Keyboard and claim ultimate victory!",
         taunt: "You've done well to make it this far. But every story needs an ending, and yours is here.",
         entryFee: 500,
@@ -215,8 +216,6 @@ export const characterService = {
         if (unlocked.characterItems.includes(itemId)) return false;
         
         unlocked.characterItems.push(itemId);
-        // FIX: The 'themes' property does not exist on UnlockedCustomizations.
-        // Simplified to match the pattern in customizationService.unlockSoundPack.
         localStorage.setItem('gemini-type-racer-unlocked-customizations', JSON.stringify(unlocked));
         return true;
     },

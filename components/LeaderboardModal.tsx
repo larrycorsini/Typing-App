@@ -28,32 +28,32 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({ onClose }) => {
   const leaderboardData = activeTab === 'local' ? localLeaderboard : globalLeaderboardData;
 
   return (
-    <div className="absolute inset-0 bg-slate-900/80 flex items-center justify-center z-30 backdrop-blur-sm animate-fadeIn" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="leaderboard-title">
-      <div ref={trapRef} className="bg-slate-800 p-8 rounded-xl shadow-2xl w-full max-w-lg border border-slate-700 animate-scaleIn" onClick={e => e.stopPropagation()}>
+    <div className="modal-backdrop animate-fadeIn" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="leaderboard-title">
+      <div ref={trapRef} className="dl-modal max-w-lg animate-scaleIn" onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-4">
-          <h2 id="leaderboard-title" className="text-3xl font-bold text-cyan-400">Leaderboard</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-cyan-400 text-3xl" aria-label="Close leaderboard modal">&times;</button>
+          <h2 id="leaderboard-title" className="text-3xl font-bold">Leaderboard</h2>
+          <button onClick={onClose} className="text-[var(--dl-text)] opacity-70 hover:opacity-100 text-3xl" aria-label="Close leaderboard modal">&times;</button>
         </div>
 
-        <div className="flex border-b border-slate-700 mb-4">
-            <button onClick={() => setActiveTab('local')} className={`py-2 px-4 font-semibold transition-colors ${activeTab === 'local' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-slate-400 hover:text-cyan-400'}`}>Local</button>
-            <button onClick={() => setActiveTab('global')} className={`py-2 px-4 font-semibold transition-colors ${activeTab === 'global' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-slate-400 hover:text-cyan-400'}`}>Global</button>
+        <div className="flex border-b border-[var(--dl-dirt)] mb-4">
+            <button onClick={() => setActiveTab('local')} className={`py-2 px-4 font-semibold transition-colors ${activeTab === 'local' ? 'text-[var(--dl-blue-shadow)] border-b-2 border-[var(--dl-blue-shadow)]' : 'text-[var(--dl-text)] opacity-60 hover:opacity-100'}`}>Local</button>
+            <button onClick={() => setActiveTab('global')} className={`py-2 px-4 font-semibold transition-colors ${activeTab === 'global' ? 'text-[var(--dl-blue-shadow)] border-b-2 border-[var(--dl-blue-shadow)]' : 'text-[var(--dl-text)] opacity-60 hover:opacity-100'}`}>Global</button>
         </div>
         
         <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-2">
           {leaderboardData.length > 0 ? leaderboardData.map((entry, index) => (
-            <div key={entry.id} className="flex justify-between items-center p-3 rounded-lg bg-slate-700/50">
+            <div key={entry.id} className="flex justify-between items-center p-3 rounded-lg bg-[#e9ddb8]">
               <div className="flex items-center">
-                <span className="font-bold text-lg text-slate-400 w-8">#{index + 1}</span>
-                <span className="font-semibold text-slate-200">{entry.name}</span>
+                <span className="font-bold text-lg text-[var(--dl-text)] opacity-60 w-8">#{index + 1}</span>
+                <span className="font-semibold text-[var(--dl-text)]">{entry.name}</span>
               </div>
               <div className="text-right">
-                <div className="font-bold text-cyan-300">{entry.wpm} WPM</div>
-                <div className="text-xs text-slate-400">{entry.accuracy}% Acc</div>
+                <div className="font-bold text-[var(--dl-blue-shadow)]">{entry.wpm} WPM</div>
+                <div className="text-xs text-[var(--dl-text)] opacity-70">{entry.accuracy}% Acc</div>
               </div>
             </div>
           )) : (
-            <p className="text-center text-slate-400 py-8">No scores yet. Complete a race to get on the leaderboard!</p>
+            <p className="text-center text-[var(--dl-text)] opacity-70 py-8">No scores yet. Complete a race to get on the leaderboard!</p>
           )}
         </div>
       </div>

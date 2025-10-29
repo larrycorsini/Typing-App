@@ -48,18 +48,18 @@ const TrainingFlying: React.FC = () => {
     }, [handleKeyDown]);
 
     return (
-        <div className="w-full max-w-3xl text-center">
-            <h1 className="text-4xl font-bold text-cyan-400 mb-2">Flying Training: Letter Jumping</h1>
-            <p className="text-slate-400 mb-6">Type the letter that appears on the screen as fast as you can!</p>
+        <div className="card w-full max-w-3xl text-center">
+            <h1 className="text-4xl font-bold mb-2">Flying Training: Letter Jumping</h1>
+            <p className="opacity-80 mb-6">Type the letter that appears on the screen as fast as you can!</p>
             <div className="flex justify-around items-center mb-6 text-4xl font-bold">
-                <div className="text-amber-400">Time: {timeLeft}</div>
-                <div className="text-green-400">Score: {score}</div>
+                <div className="text-[var(--dl-yellow-shadow)]">Time: {timeLeft}</div>
+                <div className="text-[var(--dl-green-dark)]">Score: {score}</div>
             </div>
-            <div className="relative w-full h-64 bg-slate-800 rounded-lg border-2 border-slate-700 overflow-hidden">
+            <div className="relative w-full h-64 bg-white rounded-lg border-4 border-[var(--dl-text)] overflow-hidden">
                 {timeLeft > 0 && (
                      <div 
                         key={targetChar + position.top}
-                        className="absolute text-6xl font-bold text-cyan-300 p-4 rounded-full bg-slate-700/50 animate-scaleIn"
+                        className="absolute text-6xl font-bold text-[var(--dl-text)] p-4 rounded-full bg-[var(--dl-panel-bg)] animate-scaleIn border-2 border-[var(--dl-text)]"
                         style={{ top: position.top, left: position.left, transform: 'translate(-50%, -50%)' }}
                     >
                         {targetChar}
