@@ -32,8 +32,25 @@ const TutorialModal: React.FC = () => {
             )
         },
         {
+            title: "Meet Your Duck!",
+            content: "This is your racer! Racing costs energy, which replenishes over time. Your duck also has stats like Running, Swimming, and Flying that help you overcome special hazards on the racetrack during races."
+        },
+        {
+            title: "Duck Life: Training & Feeding",
+            content: (
+                <ul className="list-disc list-inside space-y-2 text-left">
+                    <li><strong className="text-amber-300">Training Ground:</strong> Spend XP and Energy earned from races to improve your duck's stats. Higher stats make you more competitive!</li>
+                    <li><strong className="text-amber-300">Feeding Station:</strong> Out of energy? Spend coins earned from winning to buy food and get back to racing faster.</li>
+                </ul>
+            )
+        },
+        {
+            title: "Duck Life: The Championship",
+            content: "Think you're the best? Head to the Championship to challenge powerful bosses! You'll need to train your stats to meet their requirements. Defeating them unlocks unique rewards."
+        },
+        {
             title: "Unlock & Customize",
-            content: "As you play, you'll unlock achievements. These can reward you with new UI themes and typing sound packs! Check your progress and customize your experience from the main lobby.",
+            content: "As you play, you'll unlock achievements that reward you with UI themes, sound packs, and cool cosmetic items like hats for your duck. Click the pencil icon on your duck in the lobby to customize its look!",
         }
     ];
 
