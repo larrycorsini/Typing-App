@@ -22,6 +22,7 @@ import { characterService } from './services/characterService';
 import LoadingScreen from './components/LoadingScreen';
 import VisualKeyboard from './components/VisualKeyboard';
 import CapsLockWarning from './components/CapsLockWarning';
+import AbilityButton from './components/AbilityButton';
 
 const App: React.FC = () => {
   const state = useStore();
@@ -62,6 +63,7 @@ const App: React.FC = () => {
             />
         )}
         {state.isCapsLockOn && <CapsLockWarning />}
+        {state.playerCharacter.activeAbilityUnlocked && <AbilityButton />}
         </>
     );
   }

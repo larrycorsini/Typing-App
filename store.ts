@@ -53,6 +53,8 @@ interface AppState {
   loadingMessage: string;
   cheatCodeBuffer: string;
   isCapsLockOn: boolean;
+  sprintAvailable: boolean;
+  sprintEndTime: number | null;
 
   // Online Race State
   socketStatus: SocketStatus;
@@ -110,6 +112,8 @@ interface AppState {
   clearActiveConsumables: () => void;
   handleCheatCodeInput: (key: string) => void;
   setIsCapsLockOn: (isOn: boolean) => void;
+  regenerateEnergy: () => void;
+  activateSprint: () => void;
 
   // Online Actions
   setSocketStatus: (status: SocketStatus) => void;
@@ -181,6 +185,8 @@ export const useStore = create<AppState>((set, get) => ({
   loadingMessage: '',
   cheatCodeBuffer: '',
   isCapsLockOn: false,
+  sprintAvailable: true,
+  sprintEndTime: null,
   
   socketStatus: 'disconnected',
   onlineRooms: [],
@@ -343,6 +349,7 @@ export const useStore = create<AppState>((set, get) => ({
       coinsGainedThisRace: 0, 
       rankCounter: 1,
       wpmBoostEndTime: boostEndTime,
+      sprintAvailable: true,
       playerCharacter: finalCharacter,
     });
 
@@ -403,6 +410,38 @@ export const useStore = create<AppState>((set, get) => ({
     if (get().isCapsLockOn !== isOn) {
         set({ isCapsLockOn: isOn });
     }
+  },
+
+  regenerateEnergy: () => {
+      set(state => {
+          if (state.playerCharacter.energy < state.playerCharacter.maxEnergy) {
+              const newCharacter = { ...state.playerCharacter, energy: Math.min(state.playerCharacter.maxEnergy, state.playerCharacter.energy + 1) };
+              characterService.saveCharacterData(newCharacter);
+              return { playerCharacter: newCharacter };
+          }
+          return state;
+      });
+  },
+
+  activateSprint: () => {
+    set(state => {
+        if (!state.sprintAvailable || !state.playerCharacter.activeAbilityUnlocked || state.playerCharacter.evolution !== Evolution.ATHLETIC) return state;
+        
+        const SPRINT_COST = 10;
+        if (state.playerCharacter.energy < SPRINT_COST) {
+            get().addToast({ message: "Not enough energy for Sprint!", type: 'error' });
+            return state;
+        }
+
+        const newCharacter = { ...state.playerCharacter, energy: state.playerCharacter.energy - SPRINT_COST };
+        characterService.saveCharacterData(newCharacter);
+        
+        return {
+            sprintAvailable: false,
+            sprintEndTime: Date.now() + 5000, // 5 seconds from now
+            playerCharacter: newCharacter,
+        };
+    });
   },
 
   updateGame: (deltaTime: number) => {
@@ -477,37 +516,7 @@ export const useStore = create<AppState>((set, get) => ({
     set(state => {
         if (state.gameState !== GameState.TYPING) return state;
 
-        if (state.raceMode === RaceMode.COURSE) {
-            const { currentLesson, playerStats, courseProgress } = state;
-            let newCourseProgress = courseProgress;
-            let xpGained = 0;
-            if (currentLesson) {
-                const passed = playerStats.wpm >= currentLesson.goals.wpm && playerStats.accuracy >= currentLesson.goals.accuracy;
-                if (passed) {
-                    xpGained = Math.round(currentLesson.goals.wpm * 1.2);
-                    const nextLessonId = currentLesson.id + 1;
-                    if (nextLessonId > courseProgress && nextLessonId <= courseService.getTotalLessons()) {
-                        courseService.saveCourseProgress(nextLessonId);
-                        newCourseProgress = nextLessonId;
-                    }
-                }
-            }
-            playerResultForEffects = state.players.find(p => p.isPlayer);
-            // This is now inside the main race flow, so let the outer logic handle stats and ghost data
-             const player = state.players.find(p => p.isPlayer);
-             const { bestWpm } = state.persistentPlayerStats;
-             if (player && state.playerStats.wpm >= bestWpm && state.playerStats.wpm > 0) {
-                 const ghostData: GhostData = { wpmHistory: state.wpmHistory, finalWpm: state.playerStats.wpm, text: state.textToType };
-                 localStorage.setItem('gemini-type-racer-ghost', JSON.stringify(ghostData));
-             }
-            return {
-                ...state,
-                gameState: GameState.RESULTS,
-                courseProgress: newCourseProgress,
-                xpGainedThisRace: xpGained,
-            };
-        }
-
+        // Unified race end logic
         let players = [...state.players];
         let player = players.find(p => p.isPlayer);
         let newPersistentStats = state.persistentPlayerStats;
@@ -515,6 +524,7 @@ export const useStore = create<AppState>((set, get) => ({
         let xpGained = 0;
         let coinsGained = 0;
         let finalCharacterState = state.playerCharacter;
+        let newCourseProgress = state.courseProgress;
         
         if (player && !player.rank) {
             player = { ...player, rank: rankCounter++ };
@@ -540,26 +550,40 @@ export const useStore = create<AppState>((set, get) => ({
             newPersistentStats = { totalRaces: newTotalRaces, wins: newWins, bestWpm: newBestWpm, avgWpm: Math.round(newAvgWpm), avgAccuracy: Math.round(newAvgAccuracy) };
             localStorage.setItem('gemini-type-racer-stats', JSON.stringify(newPersistentStats));
 
-            if (state.raceMode !== RaceMode.GHOST && state.playerStats.wpm >= newBestWpm && state.playerStats.wpm > 0) {
+            if (state.playerStats.wpm >= newBestWpm && state.playerStats.wpm > 0) {
                  const ghostData: GhostData = { wpmHistory: state.wpmHistory, finalWpm: state.playerStats.wpm, text: state.textToType };
                  localStorage.setItem('gemini-type-racer-ghost', JSON.stringify(ghostData));
             }
 
-            xpGained = Math.round(state.playerStats.wpm * 1.5 + state.playerStats.accuracy * 0.5 + (player.rank === 1 ? 50 : 0));
-            if (player.rank === 1) coinsGained = 50;
-            else if (player.rank === 2) coinsGained = 25;
-            else if (player.rank === 3) coinsGained = 10;
-            
-            // Apply Coin Bonus from pet
-            const activePet = characterService.allPets.find(p => p.id === playerCharacter.activePet);
-            if (activePet?.bonus.type === 'COIN_BONUS') {
-                const bonusCoins = Math.round(coinsGained * activePet.bonus.value);
-                if (bonusCoins > 0) {
-                    get().addToast({ message: `+${bonusCoins} Pet Coin Bonus!`, type: 'success' });
-                    coinsGained += bonusCoins;
+            if (state.raceMode === RaceMode.COURSE) {
+                const { currentLesson } = state;
+                if (currentLesson) {
+                    const passed = state.playerStats.wpm >= currentLesson.goals.wpm && state.playerStats.accuracy >= currentLesson.goals.accuracy;
+                    if (passed) {
+                        xpGained = Math.round(currentLesson.goals.wpm * 1.2);
+                        const nextLessonId = currentLesson.id + 1;
+                        if (nextLessonId > state.courseProgress && nextLessonId <= courseService.getTotalLessons()) {
+                            courseService.saveCourseProgress(nextLessonId);
+                            newCourseProgress = nextLessonId;
+                        }
+                    }
+                }
+            } else {
+                xpGained = Math.round(state.playerStats.wpm * 1.5 + state.playerStats.accuracy * 0.5 + (player.rank === 1 ? 50 : 0));
+                if (player.rank === 1) coinsGained = 50;
+                else if (player.rank === 2) coinsGained = 25;
+                else if (player.rank === 3) coinsGained = 10;
+
+                const activePet = characterService.allPets.find(p => p.id === playerCharacter.activePet);
+                if (activePet?.bonus.type === 'COIN_BONUS') {
+                    const bonusCoins = Math.round(coinsGained * activePet.bonus.value);
+                    if (bonusCoins > 0) {
+                        get().addToast({ message: `+${bonusCoins} Pet Coin Bonus!`, type: 'success' });
+                        coinsGained += bonusCoins;
+                    }
                 }
             }
-            
+
             if (state.raceMode === RaceMode.BOSS_BATTLE) {
                 const bossInRace = state.players.find(p => !p.isPlayer);
                 const playerWon = player.rank === 1;
@@ -608,16 +632,21 @@ export const useStore = create<AppState>((set, get) => ({
                 xpGainedThisRace: xpGained,
                 coinsGainedThisRace: coinsGained,
                 playerCharacter: finalCharacterState,
+                courseProgress: newCourseProgress,
             };
         }
-        return { ...state };
+        return { ...state, gameState: GameState.RESULTS }; // Failsafe
     });
 
-    if (playerResultForEffects) {
+    // Handle side effects after state update
+    const { playerStats, currentLesson, raceMode: finalRaceMode, addToast, xpGainedThisRace } = get();
+    if (finalRaceMode === RaceMode.COURSE && currentLesson) {
+        const passed = playerStats.wpm >= currentLesson.goals.wpm && playerStats.accuracy >= currentLesson.goals.accuracy;
+        soundService.playRaceFinish(passed);
+    } else if (playerResultForEffects) {
         soundService.playRaceFinish(playerResultForEffects.rank === 1);
     }
     
-    const { xpGainedThisRace, addToast, playerStats } = get();
     if (xpGainedThisRace > 0) {
         get()._addXp(xpGainedThisRace);
     }
@@ -641,7 +670,7 @@ export const useStore = create<AppState>((set, get) => ({
         }
     });
 
-    if (playerResultForEffects && raceMode && ![RaceMode.GHOST, RaceMode.COURSE, RaceMode.BOSS_BATTLE].includes(raceMode)) {
+    if (playerResultForEffects && finalRaceMode && ![RaceMode.GHOST, RaceMode.BOSS_BATTLE].includes(finalRaceMode)) {
         addLeaderboardEntry({ name: playerResultForEffects.name, wpm: playerStats.wpm, accuracy: playerStats.accuracy });
     }
 
@@ -720,7 +749,7 @@ export const useStore = create<AppState>((set, get) => ({
         case 'raceStarting': set({ onlineCountdown: message.countdown, gameState: GameState.COUNTDOWN }); break;
         case 'raceStart': set(state => {
                 const updatedPlayers = state.players.map(p => ({ ...p, progress: 0, wpm: 0, rank: undefined }));
-                return { gameState: GameState.TYPING, elapsedTime: 0, onlineCountdown: 0, players: updatedPlayers };
+                return { gameState: GameState.TYPING, elapsedTime: 0, onlineCountdown: 0, players: updatedPlayers, sprintAvailable: true };
             }); break;
         case 'progressUpdate': set(state => ({ players: state.players.map(p => p.id === message.playerId ? { ...p, progress: message.progress, wpm: message.wpm } : p) })); break;
         case 'playerFinished': set(state => {
@@ -732,6 +761,7 @@ export const useStore = create<AppState>((set, get) => ({
             set(state => ({ 
                 textToType: message.text, raceMode: RaceMode.DAILY_CHALLENGE,
                 rankCounter: 1,
+                sprintAvailable: true,
                 players: [{
                     id: PLAYER_ID, name: state.playerName, isPlayer: true, 
                     progress: 0, wpm: 0, accuracy: 100, wpmHistory: [],
@@ -752,12 +782,12 @@ export const useStore = create<AppState>((set, get) => ({
   startCustomTextGame: (text) => {
     if (!text.trim()) return;
     get()._resetTypingState();
-    set({ textToType: text.trim(), players: [{ id: PLAYER_ID, name: get().playerName, isPlayer: true, progress: 0, wpm: 0, accuracy: 100, character: get().playerCharacter }], rankCounter: 1, raceMode: RaceMode.CUSTOM_TEXT });
+    set({ textToType: text.trim(), players: [{ id: PLAYER_ID, name: get().playerName, isPlayer: true, progress: 0, wpm: 0, accuracy: 100, character: get().playerCharacter }], rankCounter: 1, raceMode: RaceMode.CUSTOM_TEXT, sprintAvailable: true });
     set({ gameState: GameState.COUNTDOWN });
   },
   startEnduranceGame: () => {
     get()._resetTypingState();
-    set({ textToType: generateEnduranceText(), players: [{ id: PLAYER_ID, name: get().playerName, isPlayer: true, progress: 0, wpm: 0, accuracy: 100, character: get().playerCharacter }], rankCounter: 1, raceMode: RaceMode.ENDURANCE });
+    set({ textToType: generateEnduranceText(), players: [{ id: PLAYER_ID, name: get().playerName, isPlayer: true, progress: 0, wpm: 0, accuracy: 100, character: get().playerCharacter }], rankCounter: 1, raceMode: RaceMode.ENDURANCE, sprintAvailable: true });
     set({ gameState: GameState.COUNTDOWN });
   },
   startGhostRace: () => {
@@ -797,6 +827,7 @@ export const useStore = create<AppState>((set, get) => ({
         players: [player, ghostPlayer],
         elapsedTime: 0,
         rankCounter: 1,
+        sprintAvailable: true,
         gameState: GameState.COUNTDOWN,
     });
   },
@@ -810,6 +841,7 @@ export const useStore = create<AppState>((set, get) => ({
       textToType: courseService.generateTextForLesson(lesson),
       players: [{ id: PLAYER_ID, name: get().playerName, isPlayer: true, progress: 0, wpm: 0, accuracy: 100, character: get().playerCharacter }],
       elapsedTime: 0,
+      sprintAvailable: true,
       gameState: GameState.COUNTDOWN,
       rankCounter: 1,
     });
@@ -836,6 +868,7 @@ export const useStore = create<AppState>((set, get) => ({
         players: [{ id: PLAYER_ID, name: firstPlayerName, isPlayer: true, progress: 0, wpm: 0, accuracy: 100, character: get().playerCharacter }],
         gameState: GameState.COUNTDOWN,
         textToType: text,
+        sprintAvailable: true,
     });
   },
   nextPartyTurn: () => {
@@ -855,7 +888,7 @@ export const useStore = create<AppState>((set, get) => ({
     get()._resetTypingState();
     const { partyPlayers, currentPartyPlayerIndex } = get();
     const nextPlayerName = partyPlayers[currentPartyPlayerIndex].name;
-    set(state => ({ players: [{ ...state.players[0], name: nextPlayerName }], gameState: GameState.COUNTDOWN }));
+    set(state => ({ players: [{ ...state.players[0], name: nextPlayerName }], gameState: GameState.COUNTDOWN, sprintAvailable: true }));
   },
 
   startTraining: (stat) => {
@@ -940,6 +973,7 @@ export const useStore = create<AppState>((set, get) => ({
       rankCounter: 1,
       gameState: GameState.LOADING,
       loadingMessage: 'The boss is preparing their challenge...',
+      sprintAvailable: true,
     });
     const paragraph = await getTypingParagraph(RaceTheme.MOVIE_QUOTES, RaceMode.SOLO_HARD);
     const players: Player[] = [

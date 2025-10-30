@@ -51,7 +51,7 @@ const TrainingSwimming: React.FC = () => {
                     <p className="opacity-80 mt-4">Returning to training ground...</p>
                 </div>
             ) : (
-                <div className="bg-white p-6 rounded-lg shadow-inner text-3xl font-mono tracking-widest select-none border-4 border-[var(--dl-text)]">
+                <div className="bg-white p-6 rounded-lg shadow-inner text-3xl font-mono tracking-widest select-none border-4 border-[var(--dl-text)] overflow-hidden whitespace-nowrap">
                     <span className="text-[var(--dl-blue-shadow)]">{typed}</span>
                     <span className="relative">
                         <span className="absolute left-0 top-0 bottom-0 w-full bg-[var(--dl-yellow)] opacity-40 rounded-sm animate-pulse" />

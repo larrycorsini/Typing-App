@@ -14,8 +14,8 @@ const TrainingFlying: React.FC = () => {
     const generateNewTarget = useCallback(() => {
         setTargetChar(ALPHABET[Math.floor(Math.random() * ALPHABET.length)]);
         setPosition({
-            top: `${Math.random() * 80 + 10}%`,
-            left: `${Math.random() * 80 + 10}%`,
+            top: `${Math.random() * 70 + 15}%`,
+            left: `${Math.random() * 70 + 15}%`,
         });
     }, []);
 

@@ -226,6 +226,7 @@ export interface PlayerCharacter {
   inventory: Record<ConsumableItemId, number>;
   mapProgress: number; // ID of the last completed map node
   activePet: PetId | null;
+  activeAbilityUnlocked: boolean;
 }
 
 export interface Boss {

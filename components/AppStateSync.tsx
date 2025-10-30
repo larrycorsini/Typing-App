@@ -6,6 +6,7 @@ import { GameState, RaceMode } from '../types';
 
 let gameLoopInterval: number | null = null;
 let statsInterval: number | null = null;
+let energyInterval: number | null = null;
 
 export const AppStateSync: React.FC = () => {
     // Select state and actions from the store
@@ -21,6 +22,7 @@ export const AppStateSync: React.FC = () => {
         addToast,
         setGameState,
         setIsCapsLockOn,
+        regenerateEnergy,
     } = useStore(s => ({
         gameState: s.gameState,
         isFinished: s.isFinished,
@@ -33,6 +35,7 @@ export const AppStateSync: React.FC = () => {
         addToast: s.addToast,
         setGameState: s.setGameState,
         setIsCapsLockOn: s.setIsCapsLockOn,
+        regenerateEnergy: s.regenerateEnergy,
     }));
 
     // Game loop for bot movement and elapsed time
@@ -48,6 +51,19 @@ export const AppStateSync: React.FC = () => {
         }
         return () => { if (gameLoopInterval) clearInterval(gameLoopInterval); };
     }, [gameState]);
+
+    // Interval for passive energy regeneration
+    useEffect(() => {
+        if (gameState === GameState.ADVENTURE_MAP) {
+            energyInterval = window.setInterval(() => {
+                regenerateEnergy();
+            }, 5000); // Regenerate every 5 seconds
+        } else {
+            if (energyInterval) clearInterval(energyInterval);
+            energyInterval = null;
+        }
+        return () => { if (energyInterval) clearInterval(energyInterval); };
+    }, [gameState, regenerateEnergy]);
 
     // Interval to calculate player stats (WPM, accuracy)
     useEffect(() => {

@@ -114,6 +114,7 @@ const getDefaultCharacter = (evolution: Evolution = Evolution.ATHLETIC): PlayerC
         inventory: { 'energy_seed': 0, 'focus_goggles': 0, 'wpm_booster': 0 },
         mapProgress: 0,
         activePet: null,
+        activeAbilityUnlocked: false,
     };
 
     let running = 1;
@@ -157,7 +158,7 @@ export const leagues: League[] = [
         name: 'Paddles',
         wpm: 40,
         skillRequirements: { running: 5, swimming: 1, flying: 1 },
-        character: { ...getDefaultCharacter(Evolution.ATHLETIC), color: '#a1a1aa', equippedItems: { hat: null }, mapProgress: 0, pattern: 'solid', activePet: null },
+        character: { ...getDefaultCharacter(Evolution.ATHLETIC), color: '#a1a1aa', equippedItems: { hat: null }, mapProgress: 0, pattern: 'solid', activePet: null, activeAbilityUnlocked: false },
         narrative: "Paddles is the gatekeeper of the Championship. He's fast on his feet and guards the first piece of the legendary Golden Keyboard.",
         taunt: "You think your little webbed feet can keep up with me? Unlikely!",
         entryFee: 50,
@@ -168,7 +169,7 @@ export const leagues: League[] = [
         name: 'Quackmire',
         wpm: 65,
         skillRequirements: { running: 10, swimming: 10, flying: 1 },
-        character: { ...getDefaultCharacter(Evolution.STAMINA), color: '#22c55e', equippedItems: { hat: null }, mapProgress: 0, pattern: 'spots', activePet: null },
+        character: { ...getDefaultCharacter(Evolution.STAMINA), color: '#22c55e', equippedItems: { hat: null }, mapProgress: 0, pattern: 'spots', activePet: null, activeAbilityUnlocked: false },
         narrative: "Quackmire rules the water hazards. His powerful strokes make him a formidable foe. He holds the second piece of the Golden Keyboard.",
         taunt: "The water slows you down, but it's where I feel most at home. Prepare to sink!",
         entryFee: 100,
@@ -185,7 +186,7 @@ export const leagues: League[] = [
         name: 'AeroDuck',
         wpm: 85,
         skillRequirements: { running: 15, swimming: 15, flying: 15 },
-        character: { ...getDefaultCharacter(Evolution.INTELLECT), color: '#3b82f6', equippedItems: { hat: 'propeller_hat' }, mapProgress: 0, pattern: 'stripes', activePet: null },
+        character: { ...getDefaultCharacter(Evolution.INTELLECT), color: '#3b82f6', equippedItems: { hat: 'propeller_hat' }, mapProgress: 0, pattern: 'stripes', activePet: null, activeAbilityUnlocked: false },
         narrative: "Master of the skies, AeroDuck soars over hurdles that leave others stumbling. The third piece of the Golden Keyboard is within his grasp.",
         taunt: "While you're tripping over hurdles, I'll be gliding to the finish line.",
         entryFee: 200,
@@ -196,7 +197,7 @@ export const leagues: League[] = [
         name: 'The Champion',
         wpm: 110,
         skillRequirements: { running: 25, swimming: 25, flying: 25 },
-        character: { ...getDefaultCharacter(Evolution.ATHLETIC), color: '#f59e0b', equippedItems: { hat: 'championship_crown' }, mapProgress: 0, pattern: 'solid', activePet: null },
+        character: { ...getDefaultCharacter(Evolution.ATHLETIC), color: '#f59e0b', equippedItems: { hat: 'championship_crown' }, mapProgress: 0, pattern: 'solid', activePet: null, activeAbilityUnlocked: false },
         narrative: "The final boss. The Champion has mastered all forms of typing and racing. Defeat him to reassemble the Golden Keyboard and claim ultimate victory!",
         taunt: "You've done well to make it this far. But every story needs an ending, and yours is here.",
         entryFee: 500,
@@ -208,7 +209,6 @@ export const leagues: League[] = [
 
 
 export const characterService = {
-    // FIX: Add RACE_ENERGY_COST and TRAINING_ENERGY_COST to the exported service object.
     RACE_ENERGY_COST,
     TRAINING_ENERGY_COST,
     allCustomizationItems,
@@ -273,6 +273,15 @@ export const characterService = {
         }
         
         const newCharacterState = { ...character, level, xp, xpToNextLevel };
+
+        // Check for ability unlock
+        if (!newCharacterState.activeAbilityUnlocked && newCharacterState.level >= 20) {
+            // Currently only Athletic Duck has an ability defined
+            if (newCharacterState.evolution === Evolution.ATHLETIC) {
+                newCharacterState.activeAbilityUnlocked = true;
+            }
+        }
+        
         return { newCharacterState, leveledUp, unlockedItems };
     },
 

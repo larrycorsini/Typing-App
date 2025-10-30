@@ -2,6 +2,7 @@ import React from 'react';
 import { Player, Evolution } from '../types';
 import CharacterDisplay from './CharacterDisplay';
 import { characterService } from '../services/characterService';
+import { useStore } from '../store';
 
 // Fix: Define the missing PlayerCardProps interface.
 interface PlayerCardProps {
@@ -20,6 +21,7 @@ const FLYING_SKILL_EFFECTIVENESS = 0.08; // Each level reduces slowdown
 
 const PlayerCard: React.FC<PlayerCardProps> = ({ player }) => {
   const isFinished = player.progress >= 100;
+  const sprintEndTime = useStore(state => state.sprintEndTime);
   
   const cardClasses = [
     'p-4 rounded-xl shadow-md transition-all duration-300 border-4 border-[var(--dl-text)]',
@@ -44,6 +46,16 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ player }) => {
     const runningDivisor = player.character?.evolution === Evolution.ATHLETIC ? 4 : 5;
     const runningBoost = player.character?.running ? (player.character.running / runningDivisor) : 0;
     let visualProgress = baseProgress + runningBoost;
+
+    // Apply Sprint visual boost
+    const isSprinting = player.isPlayer && sprintEndTime && Date.now() < sprintEndTime;
+    if (isSprinting) {
+        // A temporary, significant visual boost that decays as the sprint ends
+        const sprintDuration = 5000;
+        const timeRemaining = sprintEndTime - Date.now();
+        const sprintBoost = (timeRemaining / sprintDuration) * 15; // Max 15% visual boost
+        visualProgress += sprintBoost;
+    }
 
     // Stamina Duck bonus
     const hazardResistance = player.character?.evolution === Evolution.STAMINA ? 0.7 : 1.0;
@@ -103,7 +115,7 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ player }) => {
         </span>
       </div>
       
-      <div className="w-full dl-progress-bar relative mt-2 overflow-hidden" aria-hidden="true">
+      <div className="w-full dl-progress-bar relative mt-2" aria-hidden="true">
         {/* Water Hazard */}
         <div 
             className="absolute h-full dl-progress-bar__water"

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useStore } from '../store';
 import TypingArea from './TypingArea';
 
@@ -22,22 +22,25 @@ const TrainingRunning: React.FC = () => {
     const [text, setText] = useState(generateText());
     const [typed, setTyped] = useState('');
     const [errors, setErrors] = useState(new Set<number>());
+    const scoreRef = useRef(0);
 
+    useEffect(() => {
+        scoreRef.current = Math.max(0, typed.length - errors.size);
+    }, [typed, errors]);
+    
     useEffect(() => {
         const timer = setInterval(() => {
             setTimeLeft(prev => {
                 if (prev <= 1) {
                     clearInterval(timer);
-                    // The score is the number of correctly typed characters
-                    const score = typed.length - errors.size;
-                    finishTraining('running', Math.max(0, score));
+                    finishTraining('running', scoreRef.current);
                     return 0;
                 }
                 return prev - 1;
             });
         }, 1000);
         return () => clearInterval(timer);
-    }, [typed, errors, finishTraining]);
+    }, [finishTraining]);
     
     const handleKeyDown = useCallback((e: KeyboardEvent) => {
         if (timeLeft <= 0) return;
@@ -72,7 +75,6 @@ const TrainingRunning: React.FC = () => {
             <h1 className="text-4xl font-bold mb-2">Running Training: Keyboard Dash</h1>
             <p className="opacity-80 mb-6">Type as many words as you can before the timer runs out!</p>
             <div className="text-6xl font-bold text-[var(--dl-yellow-shadow)] mb-6">{timeLeft}</div>
-            {/* FIX: Add the missing focusWordsCount prop, which is required by TypingArea. */}
             <TypingArea textToType={text} typed={typed} errors={errors} lastMistakeTime={lastMistakeTime} focusWordsCount={0} />
         </div>
     );
