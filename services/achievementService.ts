@@ -16,7 +16,7 @@ const allAchievements: Omit<Achievement, 'unlocked'>[] = [
       id: 'LEVEL_5',
       name: 'Getting Serious',
       description: 'Reach Level 5.',
-      reward: { type: 'characterItem', id: 'cowboy_hat' }
+      reward: { type: 'characterItem', id: 'top_hat' }
     },
     { id: 'ENDURANCE_MASTER', name: 'Stamina King', description: 'Complete an Endurance mode race.' },
     { id: 'DIY_RACER', name: 'So... Meta', description: 'Complete a race using your own custom text.' },

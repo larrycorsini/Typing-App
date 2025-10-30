@@ -20,6 +20,7 @@ export const AppStateSync: React.FC = () => {
         raceMode,
         addToast,
         setGameState,
+        setIsCapsLockOn,
     } = useStore(s => ({
         gameState: s.gameState,
         isFinished: s.isFinished,
@@ -31,6 +32,7 @@ export const AppStateSync: React.FC = () => {
         raceMode: s.raceMode,
         addToast: s.addToast,
         setGameState: s.setGameState,
+        setIsCapsLockOn: s.setIsCapsLockOn,
     }));
 
     // Game loop for bot movement and elapsed time
@@ -69,6 +71,11 @@ export const AppStateSync: React.FC = () => {
 
     // Keyboard event listener
     const onKeyDown = useCallback((e: KeyboardEvent) => {
+        // Caps lock detection should work anytime the user might type
+        if (e.getModifierState) {
+            setIsCapsLockOn(e.getModifierState("CapsLock"));
+        }
+
         const isGameActive = useStore.getState().gameState === GameState.TYPING;
         if (!isGameActive) return;
 
@@ -80,7 +87,7 @@ export const AppStateSync: React.FC = () => {
             e.preventDefault();
             handleKeyDown(key, false);
         }
-    }, [handleKeyDown]);
+    }, [handleKeyDown, setIsCapsLockOn]);
 
     useEffect(() => {
         window.addEventListener('keydown', onKeyDown);
@@ -100,7 +107,6 @@ export const AppStateSync: React.FC = () => {
             const isInOnlineMode = gameState === GameState.ONLINE_LOBBY || raceMode === RaceMode.ONLINE_RACE;
             if (isInOnlineMode) {
                 addToast({ message: "Connection lost. Returning to lobby.", type: 'error' });
-                // Fix: Corrected GameState.LOBBY to GameState.ONLINE_LOBBY as GameState.LOBBY does not exist.
                 setGameState(GameState.ONLINE_LOBBY);
             } else {
                 addToast({ message: "Connection to server failed. Online features are unavailable.", type: 'error' });

@@ -1,10 +1,34 @@
-import { PlayerCharacter, CharacterCustomizationItem, League, Boss, ShopItem, ConsumableItemId, Evolution } from '../types';
+import { PlayerCharacter, CharacterCustomizationItem, League, ShopItem, ConsumableItemId, Evolution, DuckPattern, Pet, PetId } from '../types';
 import { customizationService } from './customizationService';
 
 const CHARACTER_DATA_KEY = 'gemini-type-racer-character';
 
 export const RACE_ENERGY_COST = 25;
 export const TRAINING_ENERGY_COST = 15;
+
+export const allPets: Pet[] = [
+    {
+        id: 'bookworm',
+        name: 'Bookworm',
+        emoji: '🐛',
+        description: 'A clever companion. Grants a 10% bonus to all XP earned from races.',
+        bonus: { type: 'XP_BONUS', value: 0.10 }
+    },
+    {
+        id: 'coin_pouch',
+        name: 'Coin Pouch',
+        emoji: '💰',
+        description: 'This lucky pet helps you find 15% more coins after winning a race.',
+        bonus: { type: 'COIN_BONUS', value: 0.15 }
+    },
+    {
+        id: 'energy_seedling',
+        name: 'Energy Seedling',
+        emoji: '🌱',
+        description: 'A helpful sprout that reduces the energy cost of every race and training session by 20%.',
+        bonus: { type: 'ENERGY_SAVER', value: 0.20 }
+    }
+];
 
 export const allShopItems: ShopItem[] = [
     {
@@ -38,26 +62,26 @@ export const allShopItems: ShopItem[] = [
         cost: 150,
         type: 'gear',
         effect: { type: 'wpm_boost', value: 10 } // 10 second boost
+    },
+    {
+        id: 'pet_egg',
+        name: 'Mysterious Pet Egg',
+        description: 'Who knows what\'s inside? Hatches into a random, unowned pet companion!',
+        cost: 500,
+        type: 'pet_egg'
     }
 ];
 
 
 export const allCustomizationItems: CharacterCustomizationItem[] = [
-    { id: 'party_hat', name: 'Party Hat', type: 'hat', emoji: '🥳' },
+    { id: 'party_hat', name: 'Party Hat', type: 'hat', emoji: '🎉' },
     { id: 'propeller_hat', name: 'Propeller Hat', type: 'hat', emoji: '🚁' },
-    { id: 'cowboy_hat', name: 'Cowboy Hat', type: 'hat', emoji: '🤠' },
-    { id: 'chef_hat', name: 'Chef Hat', type: 'hat', emoji: '👨‍🍳' },
+    { id: 'top_hat', name: 'Top Hat', type: 'hat', emoji: '🎩' },
     { id: 'championship_crown', name: 'Championship Crown', type: 'hat', emoji: '👑' },
-    { id: 'monocle', name: 'Monocle', type: 'accessory', emoji: '🧐' },
-    { id: 'bow_tie', name: 'Bow Tie', type: 'accessory', emoji: '🎀' },
-    { id: 'medal', name: 'Medal', type: 'accessory', emoji: '🥇' },
 ];
 
 const levelUnlocks: Record<number, string[]> = {
-    2: ['monocle'],
-    3: ['bow_tie'],
-    5: [], // Cowboy hat is unlocked via achievement
-    7: ['chef_hat'],
+    5: [], // Top hat is unlocked via achievement
     10: ['propeller_hat'],
 };
 
@@ -78,8 +102,9 @@ const getDefaultCharacter = (evolution: Evolution = Evolution.ATHLETIC): PlayerC
         level: 1,
         xp: 0,
         evolution: evolution,
-        equippedItems: { hat: null, accessory: null },
+        equippedItems: { hat: null },
         color: '#FFD700',
+        pattern: 'solid',
         runningXp: 0,
         swimming: 1,
         swimmingXp: 0,
@@ -88,6 +113,7 @@ const getDefaultCharacter = (evolution: Evolution = Evolution.ATHLETIC): PlayerC
         defeatedBosses: [],
         inventory: { 'energy_seed': 0, 'focus_goggles': 0, 'wpm_booster': 0 },
         mapProgress: 0,
+        activePet: null,
     };
 
     let running = 1;
@@ -131,7 +157,7 @@ export const leagues: League[] = [
         name: 'Paddles',
         wpm: 40,
         skillRequirements: { running: 5, swimming: 1, flying: 1 },
-        character: { ...getDefaultCharacter(Evolution.ATHLETIC), color: '#a1a1aa', equippedItems: { hat: null, accessory: null }, mapProgress: 0 },
+        character: { ...getDefaultCharacter(Evolution.ATHLETIC), color: '#a1a1aa', equippedItems: { hat: null }, mapProgress: 0, pattern: 'solid', activePet: null },
         narrative: "Paddles is the gatekeeper of the Championship. He's fast on his feet and guards the first piece of the legendary Golden Keyboard.",
         taunt: "You think your little webbed feet can keep up with me? Unlikely!",
         entryFee: 50,
@@ -142,7 +168,7 @@ export const leagues: League[] = [
         name: 'Quackmire',
         wpm: 65,
         skillRequirements: { running: 10, swimming: 10, flying: 1 },
-        character: { ...getDefaultCharacter(Evolution.STAMINA), color: '#22c55e', equippedItems: { hat: null, accessory: 'bow_tie' }, mapProgress: 0 },
+        character: { ...getDefaultCharacter(Evolution.STAMINA), color: '#22c55e', equippedItems: { hat: null }, mapProgress: 0, pattern: 'spots', activePet: null },
         narrative: "Quackmire rules the water hazards. His powerful strokes make him a formidable foe. He holds the second piece of the Golden Keyboard.",
         taunt: "The water slows you down, but it's where I feel most at home. Prepare to sink!",
         entryFee: 100,
@@ -159,7 +185,7 @@ export const leagues: League[] = [
         name: 'AeroDuck',
         wpm: 85,
         skillRequirements: { running: 15, swimming: 15, flying: 15 },
-        character: { ...getDefaultCharacter(Evolution.INTELLECT), color: '#3b82f6', equippedItems: { hat: 'propeller_hat', accessory: 'monocle' }, mapProgress: 0 },
+        character: { ...getDefaultCharacter(Evolution.INTELLECT), color: '#3b82f6', equippedItems: { hat: 'propeller_hat' }, mapProgress: 0, pattern: 'stripes', activePet: null },
         narrative: "Master of the skies, AeroDuck soars over hurdles that leave others stumbling. The third piece of the Golden Keyboard is within his grasp.",
         taunt: "While you're tripping over hurdles, I'll be gliding to the finish line.",
         entryFee: 200,
@@ -170,7 +196,7 @@ export const leagues: League[] = [
         name: 'The Champion',
         wpm: 110,
         skillRequirements: { running: 25, swimming: 25, flying: 25 },
-        character: { ...getDefaultCharacter(Evolution.ATHLETIC), color: '#f59e0b', equippedItems: { hat: 'championship_crown', accessory: null }, mapProgress: 0 },
+        character: { ...getDefaultCharacter(Evolution.ATHLETIC), color: '#f59e0b', equippedItems: { hat: 'championship_crown' }, mapProgress: 0, pattern: 'solid', activePet: null },
         narrative: "The final boss. The Champion has mastered all forms of typing and racing. Defeat him to reassemble the Golden Keyboard and claim ultimate victory!",
         taunt: "You've done well to make it this far. But every story needs an ending, and yours is here.",
         entryFee: 500,
@@ -182,10 +208,14 @@ export const leagues: League[] = [
 
 
 export const characterService = {
+    // FIX: Add RACE_ENERGY_COST and TRAINING_ENERGY_COST to the exported service object.
+    RACE_ENERGY_COST,
+    TRAINING_ENERGY_COST,
     allCustomizationItems,
     levelUnlocks,
     leagues,
     allShopItems,
+    allPets,
     getDefaultCharacter,
 
     getCharacterData: (): PlayerCharacter => {
@@ -262,7 +292,7 @@ export const characterService = {
         return newCharacter;
     },
 
-    buyItem: (character: PlayerCharacter, itemId: string): { newCharacterState: PlayerCharacter, message: string, success: boolean } => {
+    buyItem: (character: PlayerCharacter, itemId: string, unlockedPets: PetId[]): { newCharacterState: PlayerCharacter, message: string, success: boolean, unlockedPet?: Pet } => {
         const item = allShopItems.find(i => i.id === itemId);
         if (!item) {
             return { newCharacterState: character, message: "Item not found.", success: false };
@@ -274,13 +304,21 @@ export const characterService = {
         const newCharacterState = { ...character, coins: character.coins - item.cost };
         
         if (item.type === 'food') {
-            newCharacterState.energy = Math.min(character.maxEnergy, character.energy + item.effect.value);
+            newCharacterState.energy = Math.min(character.maxEnergy, character.energy + (item.effect?.value || 0));
         } else if (item.type === 'gear') {
             const consumableId = item.id as ConsumableItemId;
             newCharacterState.inventory = {
                 ...newCharacterState.inventory,
                 [consumableId]: (newCharacterState.inventory[consumableId] || 0) + 1,
             };
+        } else if (item.type === 'pet_egg') {
+            const unownedPets = allPets.filter(p => !unlockedPets.includes(p.id));
+            if (unownedPets.length === 0) {
+                 return { newCharacterState: character, message: "You've already collected all the pets!", success: false };
+            }
+            const randomPet = unownedPets[Math.floor(Math.random() * unownedPets.length)];
+            customizationService.unlockPet(randomPet.id);
+            return { newCharacterState, message: `The egg hatched into a ${randomPet.name}!`, success: true, unlockedPet: randomPet };
         }
         
         return { newCharacterState, message: `Purchased ${item.name}!`, success: true };

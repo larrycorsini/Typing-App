@@ -13,10 +13,16 @@ const StatBox: React.FC<{ label: string; value: string | number; className?: str
 
 const Shop: React.FC = () => {
     const { playerCharacter, setGameState, buyItem } = useStore();
-    const [activeTab, setActiveTab] = useState<'food' | 'gear'>('food');
+    const [activeTab, setActiveTab] = useState<'food' | 'gear' | 'special'>('food');
     const energyPercentage = (playerCharacter.energy / playerCharacter.maxEnergy) * 100;
     
-    const itemsToShow = characterService.allShopItems.filter(item => item.type === activeTab);
+    let itemsToShow;
+    if (activeTab === 'special') {
+        itemsToShow = characterService.allShopItems.filter(item => item.type === 'pet_egg');
+    } else {
+        itemsToShow = characterService.allShopItems.filter(item => item.type === activeTab);
+    }
+    
 
     return (
         <div className="w-full max-w-3xl mx-auto text-center card">
@@ -40,6 +46,7 @@ const Shop: React.FC = () => {
                 <div className="flex border-b border-[var(--dl-dirt)] mb-4">
                     <button onClick={() => setActiveTab('food')} className={`py-2 px-4 font-semibold transition-colors ${activeTab === 'food' ? 'text-[var(--dl-blue-shadow)] border-b-2 border-[var(--dl-blue-shadow)]' : 'opacity-60 hover:opacity-100'}`}>Food</button>
                     <button onClick={() => setActiveTab('gear')} className={`py-2 px-4 font-semibold transition-colors ${activeTab === 'gear' ? 'text-[var(--dl-blue-shadow)] border-b-2 border-[var(--dl-blue-shadow)]' : 'opacity-60 hover:opacity-100'}`}>Gear</button>
+                    <button onClick={() => setActiveTab('special')} className={`py-2 px-4 font-semibold transition-colors ${activeTab === 'special' ? 'text-[var(--dl-blue-shadow)] border-b-2 border-[var(--dl-blue-shadow)]' : 'opacity-60 hover:opacity-100'}`}>Special</button>
                 </div>
 
                 <div className="space-y-4">

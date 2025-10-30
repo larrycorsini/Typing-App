@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useStore } from '../store';
 import { mapService } from '../services/mapService';
 import { MapNode } from '../types';
@@ -44,9 +44,20 @@ const Node: React.FC<{ node: MapNode }> = ({ node }) => {
 };
 
 const AdventureMap: React.FC = () => {
-    const { setGameState, playerCharacter } = useStore();
+    const { setGameState, playerCharacter, handleCheatCodeInput } = useStore();
     const mapZones = mapService.getMapData();
     const allNodes = mapService.getAllNodes();
+
+    useEffect(() => {
+        const onKeyDown = (e: KeyboardEvent) => {
+            // Allow typing cheats only on the map screen
+            if (e.key.length === 1 && e.key.match(/[a-z0-9]/i)) {
+                handleCheatCodeInput(e.key.toLowerCase());
+            }
+        };
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [handleCheatCodeInput]);
 
     const getPathCoords = () => {
         if (allNodes.length < 2) return '';

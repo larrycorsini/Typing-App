@@ -6,9 +6,9 @@ const courseStructure: CourseSection[] = [
     {
         title: "The Home Row",
         lessons: [
-            { id: 1, title: "F and J", text: "", characterPool: "fj ", goals: { wpm: 10, accuracy: 90 } },
-            { id: 2, title: "D and K", text: "", characterPool: "dkfj ", goals: { wpm: 12, accuracy: 92 } },
-            { id: 3, title: "S and L", text: "", characterPool: "sladkfj ", goals: { wpm: 14, accuracy: 93 } },
+            { id: 1, title: "F and J", text: "", characterPool: "fj", goals: { wpm: 10, accuracy: 90 } },
+            { id: 2, title: "D and K", text: "", characterPool: "dkfj", goals: { wpm: 12, accuracy: 92 } },
+            { id: 3, title: "S and L", text: "", characterPool: "sladkfj", goals: { wpm: 14, accuracy: 93 } },
             { id: 4, title: "A and ;", text: "", characterPool: "asdfjkl;", goals: { wpm: 15, accuracy: 94 } },
             { id: 5, title: "Home Row Words", text: "", wordPool: ["a", "sad", "lad", "asks", "a", "flask;", "a", "fad;", "add", "all", "fall", "jalk"], goals: { wpm: 18, accuracy: 95 } },
         ]
@@ -35,12 +35,18 @@ const courseStructure: CourseSection[] = [
     }
 ];
 
-const generateTextFromChars = (pool: string, length: number): string => {
-    let text = '';
-    for (let i = 0; i < length; i++) {
-        text += pool.charAt(Math.floor(Math.random() * pool.length));
+// Rewritten to avoid consecutive spaces
+const generateTextFromChars = (pool: string, wordCount: number, minWordLen: number, maxWordLen: number): string => {
+    const words = [];
+    for (let i = 0; i < wordCount; i++) {
+        const wordLen = Math.floor(Math.random() * (maxWordLen - minWordLen + 1)) + minWordLen;
+        let word = '';
+        for (let j = 0; j < wordLen; j++) {
+            word += pool.charAt(Math.floor(Math.random() * pool.length));
+        }
+        words.push(word);
     }
-    return text.trim();
+    return words.join(' ');
 };
 
 const generateTextFromWords = (pool: string[], wordCount: number): string => {
@@ -91,7 +97,8 @@ export const courseService = {
             return generateTextFromWords(lesson.wordPool, 10);
         }
         if (lesson.characterPool) {
-            return generateTextFromChars(lesson.characterPool, 30);
+            // Generate 8 "words" of 2-5 chars each to prevent double spaces
+            return generateTextFromChars(lesson.characterPool, 8, 2, 5);
         }
         return lesson.text;
     }

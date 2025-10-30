@@ -1,4 +1,4 @@
-import { PlayerSettings, UnlockedCustomizations, CustomizationSoundPack } from '../types';
+import { PlayerSettings, UnlockedCustomizations, CustomizationSoundPack, PetId } from '../types';
 
 const UNLOCKED_CUSTOMIZATIONS_KEY = 'gemini-type-racer-unlocked-customizations';
 const PLAYER_SETTINGS_KEY = 'gemini-type-racer-player-settings';
@@ -13,6 +13,7 @@ const getDefaults = (): { customizations: UnlockedCustomizations, settings: Play
     customizations: {
         soundPacks: ['classic', 'scifi'], // Give scifi for free
         characterItems: [], 
+        unlockedPets: [],
     },
     settings: {
         activeSoundPackId: 'classic',
@@ -30,6 +31,7 @@ export const customizationService = {
                 return {
                     soundPacks: parsed.soundPacks || defaults.soundPacks,
                     characterItems: parsed.characterItems || defaults.characterItems,
+                    unlockedPets: parsed.unlockedPets || defaults.unlockedPets,
                 };
             }
             return defaults;
@@ -46,6 +48,14 @@ export const customizationService = {
         return true;
     },
     
+    unlockPet: (petId: PetId): boolean => {
+        const unlocked = customizationService.getUnlocked();
+        if (unlocked.unlockedPets.includes(petId)) return false;
+        unlocked.unlockedPets.push(petId);
+        localStorage.setItem(UNLOCKED_CUSTOMIZATIONS_KEY, JSON.stringify(unlocked));
+        return true;
+    },
+
     getPlayerSettings: (): PlayerSettings => {
         try {
             const stored = localStorage.getItem(PLAYER_SETTINGS_KEY);

@@ -37,13 +37,15 @@ const MistakeAnalysis: React.FC<{ mistypedChars: TypingStats['mistypedChars'] }>
 
 const ResultsModal: React.FC<ResultsModalProps> = ({ players, onPlayAgain }) => {
   const trapRef = useFocusTrap<HTMLDivElement>(onPlayAgain);
-  const { partyPlayers, raceMode, playerStats, currentLesson, xpGainedThisRace, coinsGainedThisRace } = useStore(state => ({
+  const { partyPlayers, raceMode, playerStats, persistentPlayerStats, currentLesson, xpGainedThisRace, coinsGainedThisRace, startGhostRace } = useStore(state => ({
     partyPlayers: state.partyPlayers,
     raceMode: state.raceMode,
     playerStats: state.playerStats,
+    persistentPlayerStats: state.persistentPlayerStats,
     currentLesson: state.currentLesson,
     xpGainedThisRace: state.xpGainedThisRace,
     coinsGainedThisRace: state.coinsGainedThisRace,
+    startGhostRace: state.startGhostRace,
   }));
   const isPartyMode = raceMode === RaceMode.PARTY;
   const isOnlineMode = raceMode === RaceMode.ONLINE_RACE;
@@ -51,6 +53,7 @@ const ResultsModal: React.FC<ResultsModalProps> = ({ players, onPlayAgain }) => 
   
   const playerResult = players.find(p => p.isPlayer);
   const isWinner = playerResult?.rank === 1;
+  const isNewBestWpm = playerResult && playerStats.wpm >= persistentPlayerStats.bestWpm && playerStats.wpm > 0 && raceMode !== RaceMode.GHOST;
 
   let title = 'Race Finished!';
   let subtitle = '';
@@ -114,13 +117,29 @@ const ResultsModal: React.FC<ResultsModalProps> = ({ players, onPlayAgain }) => 
 
         {playerResult?.wpmHistory && !isPartyMode && !isCourseMode && <WpmChart data={playerResult.wpmHistory} />}
         {playerStats.mistypedChars && !isPartyMode && <MistakeAnalysis mistypedChars={playerStats.mistypedChars} />}
+        
+        {isNewBestWpm && (
+          <div className="text-center bg-yellow-100 border border-yellow-300 p-2 rounded-lg mt-4 animate-fadeIn">
+            <p className="font-bold text-yellow-700">New Personal Best!</p>
+          </div>
+        )}
 
-        <button 
-          onClick={onPlayAgain}
-          className="w-full btn btn-primary text-xl py-3 mt-8"
-        >
-          {isCourseMode ? 'Back to Course' : 'Continue'}
-        </button>
+        <div className="flex gap-4 mt-8">
+            {isNewBestWpm && (
+                 <button 
+                    onClick={startGhostRace}
+                    className="w-1/2 btn btn-secondary text-xl py-3"
+                >
+                    Race Your Ghost
+                </button>
+            )}
+            <button 
+              onClick={onPlayAgain}
+              className={`w-full btn btn-primary text-xl py-3 ${isNewBestWpm ? 'w-1/2' : 'w-full'}`}
+            >
+              {isCourseMode ? 'Back to Course' : 'Continue'}
+            </button>
+        </div>
       </div>
     </div>
   );

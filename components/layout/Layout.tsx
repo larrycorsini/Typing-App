@@ -8,6 +8,7 @@ import AchievementsModal from '../AchievementsModal';
 import SettingsModal from '../SettingsModal';
 import TutorialModal from '../TutorialModal';
 import CharacterCustomizationModal from '../CharacterCustomizationModal';
+import PetManagementModal from '../PetManagementModal';
 import StoryModal from '../StoryModal';
 import ToastContainer from '../Toast';
 import Countdown from '../Countdown';
@@ -54,6 +55,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       {state.showAchievementsModal && <AchievementsModal onClose={() => state.setShowAchievementsModal(false)} />}
       {state.showSettingsModal && <SettingsModal onClose={() => state.setShowSettingsModal(false)} />}
       {state.showCharacterModal && <CharacterCustomizationModal onClose={() => state.setShowCharacterModal(false)} />}
+      {state.showPetModal && <PetManagementModal onClose={() => state.setShowPetModal(false)} />}
     </>
   );
 };

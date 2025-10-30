@@ -82,6 +82,10 @@
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
       }
+      @keyframes bobbing {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-4px); }
+      }
       .animate-fadeIn {
         animation: fadeIn 0.5s ease-in-out forwards;
       }
@@ -130,6 +134,7 @@
         border-width: 4px;
         border-style: solid;
         z-index: 5;
+        overflow: hidden;
       }
       .duck-head {
         position: absolute;
@@ -142,6 +147,7 @@
         border-width: 4px;
         border-style: solid;
         z-index: 10;
+        overflow: hidden;
       }
       .duck-beak {
         position: absolute;
@@ -178,6 +184,26 @@
         border-bottom: 5px solid var(--dl-text);
         border-bottom-left-radius: 4px;
         z-index: 4;
+      }
+      .duck-pattern {
+        position: absolute;
+        inset: -4px; /* Cover the border */
+        background-size: 20px 20px;
+        opacity: 0.2;
+      }
+      .duck-pattern--spots {
+         background-image: radial-gradient(var(--dl-text) 25%, transparent 25%);
+      }
+      .duck-pattern--stripes {
+          background-image: linear-gradient(45deg, var(--dl-text) 25%, transparent 25%, transparent 50%, var(--dl-text) 50%, var(--dl-text) 75%, transparent 75%, transparent 100%);
+      }
+      .pet-companion {
+        position: absolute;
+        left: -35px;
+        bottom: 0;
+        font-size: 28px;
+        animation: bobbing 2s infinite ease-in-out;
+        z-index: 6;
       }
       
       /* New UI Component Styles */
@@ -400,7 +426,86 @@
         border-radius: 50%;
         animation: spin 1s linear infinite;
       }
+
+      /* Visual Keyboard Styles */
+      .visual-keyboard {
+        background: var(--dl-panel-bg);
+        padding: 1rem;
+        border-radius: 12px;
+        border: 4px solid var(--dl-panel-border);
+        box-shadow: 0 6px 0 var(--dl-panel-border);
+        width: 100%;
+        max-width: 700px;
+        margin-top: 1.5rem;
+      }
+      .keyboard-row {
+        display: flex;
+        justify-content: center;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+      }
+      .keyboard-key {
+        font-family: var(--dl-font);
+        color: var(--dl-text);
+        background-color: #fff;
+        border: 2px solid var(--dl-text);
+        border-bottom-width: 4px;
+        border-radius: 6px;
+        padding: 0.75rem;
+        min-width: 40px;
+        text-align: center;
+        font-size: 1.25rem;
+        position: relative;
+        transition: all 0.1s;
+      }
+      .keyboard-key--next {
+        background-color: var(--dl-yellow);
+        transform: translateY(-2px);
+      }
+      .keyboard-key--mistake {
+        background-color: var(--dl-red);
+        animation: shake 0.3s;
+      }
+      @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-5px); }
+        75% { transform: translateX(5px); }
+      }
+      .finger-guide {
+        position: absolute;
+        top: -12px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 0.8rem;
+        padding: 0.1rem 0.4rem;
+        border-radius: 4px;
+        color: white;
+      }
+      .finger-guide--L-pinky { background-color: #ef4444; }
+      .finger-guide--L-ring { background-color: #f97316; }
+      .finger-guide--L-middle { background-color: #eab308; }
+      .finger-guide--L-index { background-color: #84cc16; }
+      .finger-guide--thumb { background-color: #3b82f6; }
+      .finger-guide--R-index { background-color: #22d3ee; }
+      .finger-guide--R-middle { background-color: #6366f1; }
+      .finger-guide--R-ring { background-color: #a855f7; }
+      .finger-guide--R-pinky { background-color: #ec4899; }
       
+      /* Caps Lock Warning */
+      .caps-lock-warning {
+        position: fixed;
+        bottom: 2rem;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: var(--dl-red);
+        color: white;
+        padding: 0.75rem 1.5rem;
+        border-radius: 12px;
+        border: 4px solid var(--dl-red-shadow);
+        font-size: 1.25rem;
+        z-index: 50;
+        animation: fadeIn 0.3s;
+      }
     </style>
   <script type="importmap">
 {

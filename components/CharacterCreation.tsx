@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import { soundService } from '../services/soundService';
 import CharacterDisplay from './CharacterDisplay';
-import { PlayerCharacter, Evolution } from '../types';
+import { PlayerCharacter, Evolution, DuckPattern } from '../types';
 import { characterService } from '../services/characterService';
 
 interface CharacterCreationProps {
-  onCharacterCreate: (name: string, color: string, evolution: Evolution) => void;
+  onCharacterCreate: (name: string, color: string, evolution: Evolution, pattern: DuckPattern) => void;
 }
 
 const PREDEFINED_COLORS = ['#FFD700', '#FFFFFF', '#8A2BE2', '#32CD32', '#1E90FF', '#FF4500'];
+const PATTERNS: DuckPattern[] = ['solid', 'spots', 'stripes'];
 
 const evolutionInfo = {
     [Evolution.ATHLETIC]: {
@@ -31,18 +32,20 @@ const evolutionInfo = {
 const CharacterCreation: React.FC<CharacterCreationProps> = ({ onCharacterCreate }) => {
   const [name, setName] = useState('');
   const [color, setColor] = useState(PREDEFINED_COLORS[0]);
+  const [pattern, setPattern] = useState<DuckPattern>('solid');
   const [selectedEvolution, setSelectedEvolution] = useState<Evolution | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (name.trim() && selectedEvolution) {
       soundService.init();
-      onCharacterCreate(name.trim(), color, selectedEvolution);
+      onCharacterCreate(name.trim(), color, selectedEvolution, pattern);
     }
   };
   
   const previewCharacter: PlayerCharacter = characterService.getDefaultCharacter(selectedEvolution || Evolution.ATHLETIC);
   previewCharacter.color = color;
+  previewCharacter.pattern = pattern;
 
   return (
     <div className="w-full max-w-2xl mx-auto text-center animate-fadeIn">
@@ -85,6 +88,22 @@ const CharacterCreation: React.FC<CharacterCreationProps> = ({ onCharacterCreate
                                 style={{ backgroundColor: c }}
                                 aria-label={`Select color ${c}`}
                             />
+                        ))}
+                    </div>
+                </div>
+
+                <div className="mb-2">
+                    <p className="font-semibold mb-3">Customize your duck's pattern:</p>
+                    <div className="flex justify-center gap-3">
+                        {PATTERNS.map(p => (
+                            <button
+                                key={p}
+                                type="button"
+                                onClick={() => setPattern(p)}
+                                className={`btn capitalize ${pattern === p ? 'btn-primary' : 'btn-secondary'}`}
+                            >
+                                {p}
+                            </button>
                         ))}
                     </div>
                 </div>

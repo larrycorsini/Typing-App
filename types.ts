@@ -1,7 +1,5 @@
 
 
-
-
 export enum Evolution {
   ATHLETIC = 'ATHLETIC',
   STAMINA = 'STAMINA',
@@ -113,6 +111,7 @@ export interface PlayerSettings {
 export interface UnlockedCustomizations {
     soundPacks: CustomizationSoundPack['id'][];
     characterItems: string[];
+    unlockedPets: PetId[];
 }
 
 export interface Achievement {
@@ -167,7 +166,7 @@ export interface CourseSection {
 export interface CharacterCustomizationItem {
   id: string;
   name: string;
-  type: 'hat' | 'accessory';
+  type: 'hat';
   emoji: string;
 }
 
@@ -178,13 +177,28 @@ export interface ShopItem {
     name: string;
     description: string;
     cost: number;
-    type: 'food' | 'gear';
-    effect: {
+    type: 'food' | 'gear' | 'pet_egg';
+    effect?: {
         type: 'energy' | 'wpm_boost' | 'focus';
         value: number;
     };
 }
 
+export type DuckPattern = 'solid' | 'spots' | 'stripes';
+
+export type PetId = 'bookworm' | 'coin_pouch' | 'energy_seedling';
+export type PetBonusType = 'XP_BONUS' | 'COIN_BONUS' | 'ENERGY_SAVER';
+
+export interface Pet {
+    id: PetId;
+    name: string;
+    emoji: string;
+    description: string;
+    bonus: {
+        type: PetBonusType;
+        value: number; // e.g. 0.10 for 10%
+    };
+}
 
 export interface PlayerCharacter {
   evolution: Evolution;
@@ -193,9 +207,9 @@ export interface PlayerCharacter {
   xpToNextLevel: number;
   equippedItems: {
     hat: string | null;
-    accessory: string | null;
   };
   color: string;
+  pattern: DuckPattern;
   running: number;
   runningXp: number;
   runningXpToNextLevel: number;
@@ -211,6 +225,7 @@ export interface PlayerCharacter {
   defeatedBosses: string[];
   inventory: Record<ConsumableItemId, number>;
   mapProgress: number; // ID of the last completed map node
+  activePet: PetId | null;
 }
 
 export interface Boss {

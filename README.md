@@ -1,4 +1,5 @@
 
+
 # Gemini Type Racer
 
 Welcome to Gemini Type Racer, a modern, feature-rich typing game where you can test your speed and accuracy against dynamic AI opponents, race against your own best performance, compete in **real-time online multiplayer**, or challenge friends in local "hotseat" mode. The typing passages are generated on-the-fly by Google's Gemini API, providing a unique challenge every time.
@@ -12,6 +13,7 @@ Welcome to Gemini Type Racer, a modern, feature-rich typing game where you can t
 - **Adventure Map Progression**: No more static lobbies! Progress through a visual world map, completing races and challenges to unlock new areas and face off against powerful bosses in a true adventure.
 - **Charming "Duck Life" Visuals**: A complete visual overhaul inspired by the classic Duck Life games, featuring a bright, cartoony art style, bubbly fonts, and a cheerful, playful interface.
 - **Duck Evolutions**: Choose your specialty! Select an Athletic, Stamina, or Intellect duck at the start, each with unique stats and abilities that affect your racing style.
+- **Pets System**: Collect and equip adorable pets that follow you in races and provide powerful passive bonuses, like extra XP or more coins!
 - **Real-Time Online Multiplayer**: Join a public lobby, create a room, and race against players from around the world. Your progress is updated character-by-character for a thrilling, competitive experience.
 - **Dynamic Content via Gemini API**: Never type the same thing twice! Race passages are generated on the fly by the Gemini API, ensuring a unique challenge every time.
 - **Multiple Game & Practice Modes**:

@@ -12,10 +12,6 @@ const CharacterDisplay: React.FC<CharacterDisplayProps> = ({ character, isPrevie
     const hat = !isPreview && character.equippedItems.hat 
         ? characterService.allCustomizationItems.find(i => i.id === character.equippedItems.hat) 
         : null;
-    
-    const accessory = !isPreview && character.equippedItems.accessory 
-        ? characterService.allCustomizationItems.find(i => i.id === character.equippedItems.accessory) 
-        : null;
         
     const bodyColor = character.color || '#FFD700';
     const containerClasses = ['duck-container'];
@@ -23,13 +19,19 @@ const CharacterDisplay: React.FC<CharacterDisplayProps> = ({ character, isPrevie
         containerClasses.push('duck-container--small');
     }
 
+    const patternClass = character.pattern ? `duck-pattern--${character.pattern}` : '';
+
     return (
         <div className={containerClasses.join(' ')}>
             {/* Duck Parts */}
-            <div className="duck-head" style={{ backgroundColor: bodyColor }}></div>
+            <div className="duck-head" style={{ backgroundColor: bodyColor }}>
+                {character.pattern !== 'solid' && <div className={`duck-pattern ${patternClass}`}></div>}
+            </div>
             <div className="duck-eye"></div>
             <div className="duck-beak"></div>
-            <div className="duck-body" style={{ backgroundColor: bodyColor }}></div>
+            <div className="duck-body" style={{ backgroundColor: bodyColor }}>
+                {character.pattern !== 'solid' && <div className={`duck-pattern ${patternClass}`}></div>}
+            </div>
             <div className="duck-leg"></div>
 
             {/* Accessories */}
@@ -47,22 +49,6 @@ const CharacterDisplay: React.FC<CharacterDisplayProps> = ({ character, isPrevie
                     }}
                 >
                     {hat.emoji}
-                </span>
-            )}
-            {accessory && (
-                 <span
-                    role="img"
-                    aria-label={accessory.name}
-                    style={{
-                        fontSize: '24px',
-                        position: 'absolute',
-                        top: '65px',
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        zIndex: 16,
-                    }}
-                >
-                    {accessory.emoji}
                 </span>
             )}
         </div>

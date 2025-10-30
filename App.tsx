@@ -1,5 +1,5 @@
 import React from 'react';
-import { GameState } from './types';
+import { GameState, RaceMode } from './types';
 import { useStore } from './store';
 
 import TypingArea from './components/TypingArea';
@@ -20,6 +20,8 @@ import TrainingFlying from './components/TrainingFlying';
 import RaceConfirmationModal from './components/RaceConfirmationModal';
 import { characterService } from './services/characterService';
 import LoadingScreen from './components/LoadingScreen';
+import VisualKeyboard from './components/VisualKeyboard';
+import CapsLockWarning from './components/CapsLockWarning';
 
 const App: React.FC = () => {
   const state = useStore();
@@ -52,13 +54,21 @@ const App: React.FC = () => {
             lastMistakeTime={state.lastMistakeTime}
             focusWordsCount={focusWordsCount}
         />
+        {state.raceMode === RaceMode.COURSE && (
+            <VisualKeyboard 
+                textToType={state.textToType}
+                typed={state.typed}
+                lastMistakeTime={state.lastMistakeTime}
+            />
+        )}
+        {state.isCapsLockOn && <CapsLockWarning />}
         </>
     );
   }
 
   const renderContent = () => {
     switch(state.gameState) {
-      case GameState.CHARACTER_CREATION: return <CharacterCreation onCharacterCreate={(name, color, evolution) => state.setPlayerAndEvolution(name, color, evolution)} />;
+      case GameState.CHARACTER_CREATION: return <CharacterCreation onCharacterCreate={(name, color, evolution, pattern) => state.setPlayerAndEvolution(name, color, evolution, pattern)} />;
       case GameState.ADVENTURE_MAP: return <AdventureMap />;
       case GameState.RACE_CONFIRMATION: return <RaceConfirmationModal />;
       case GameState.LOADING: return <LoadingScreen />;

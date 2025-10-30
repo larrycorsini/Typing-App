@@ -10,6 +10,7 @@ const Header: React.FC = () => {
         setShowAchievementsModal,
         setShowSettingsModal,
         setShowCharacterModal,
+        setShowPetModal,
         changeUser,
     } = useStore();
 
@@ -20,13 +21,20 @@ const Header: React.FC = () => {
         <header className="fixed top-0 left-0 right-0 dl-header p-3 z-20">
             <div className="max-w-7xl mx-auto flex justify-between items-center gap-4">
                 {/* Left Side: Player Info */}
-                <div className="flex-1 min-w-0 flex items-center gap-4">
+                <div className="flex-1 min-w-0 flex items-center gap-2">
                     <button 
                       onClick={() => setShowCharacterModal(true)} 
                       className="dl-header-btn flex-shrink-0"
                       aria-label="Customize character"
                     >
                         Customize
+                    </button>
+                    <button
+                      onClick={() => setShowPetModal(true)}
+                      className="dl-header-btn flex-shrink-0"
+                      aria-label="Manage pets"
+                    >
+                        Pets
                     </button>
                     <div className="flex-1 min-w-0">
                         <h1 className="text-xl font-bold truncate" title={playerName}>{playerName}</h1>

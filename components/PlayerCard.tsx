@@ -1,6 +1,7 @@
 import React from 'react';
 import { Player, Evolution } from '../types';
 import CharacterDisplay from './CharacterDisplay';
+import { characterService } from '../services/characterService';
 
 // Fix: Define the missing PlayerCardProps interface.
 interface PlayerCardProps {
@@ -89,6 +90,7 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ player }) => {
 
   const visualProgress = calculateVisualProgress();
   const duckContainerClasses = `absolute transition-all duration-300 ease-linear ${player.isBoosted ? 'duck-container--boosted' : ''}`;
+  const activePet = player.character?.activePet ? characterService.allPets.find(p => p.id === player.character.activePet) : null;
 
   return (
     <div className={cardClasses} role="status" aria-live="polite" aria-label={ariaLabel}>
@@ -132,6 +134,11 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ player }) => {
                 }}
             >
                 <CharacterDisplay character={player.character} size="small" />
+                {activePet && (
+                    <div className="pet-companion" title={activePet.name}>
+                        {activePet.emoji}
+                    </div>
+                )}
             </div>
         )}
       </div>

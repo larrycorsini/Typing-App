@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { GameState, Player, RaceMode, RaceTheme, Toast, TypingStats, WpmDataPoint, PlayerStats, Achievement, LeaderboardEntry, GhostData, PlayerSettings, UnlockedCustomizations, PartyPlayer, RoomInfo, ServerToClientMessage, CourseLesson, PlayerCharacter, Boss, ConsumableItemId, Evolution, MapNode } from './types';
+import { GameState, Player, RaceMode, RaceTheme, Toast, TypingStats, WpmDataPoint, PlayerStats, Achievement, LeaderboardEntry, GhostData, PlayerSettings, UnlockedCustomizations, PartyPlayer, RoomInfo, ServerToClientMessage, CourseLesson, PlayerCharacter, Boss, ConsumableItemId, Evolution, MapNode, DuckPattern, PetId } from './types';
 import { getTypingParagraph } from './services/geminiService';
 import { soundService } from './services/soundService';
 import { getAchievements, checkAndUnlockAchievements } from './services/achievementService';
@@ -7,7 +7,7 @@ import { getLeaderboard, addLeaderboardEntry } from './services/leaderboardServi
 import { customizationService } from './services/customizationService';
 import { websocketService } from './services/websocketService';
 import { courseService } from './services/courseService';
-import { characterService, RACE_ENERGY_COST, TRAINING_ENERGY_COST, allShopItems } from './services/characterService';
+import { characterService } from './services/characterService';
 import { mapService } from './services/mapService';
 
 const BOT_COLORS = ['#FFFFFF', '#8A2BE2', '#32CD32', '#1E90FF', '#FF4500', '#FF69B4', '#F0E68C', '#7FFFD4'];
@@ -51,6 +51,8 @@ interface AppState {
   activeConsumables: Record<ConsumableItemId, boolean>;
   wpmBoostEndTime: number | null;
   loadingMessage: string;
+  cheatCodeBuffer: string;
+  isCapsLockOn: boolean;
 
   // Online Race State
   socketStatus: SocketStatus;
@@ -83,6 +85,7 @@ interface AppState {
   showSettingsModal: boolean;
   showTutorialModal: boolean;
   showCharacterModal: boolean;
+  showPetModal: boolean;
   toasts: Toast[];
 
   // Persistent State
@@ -95,7 +98,7 @@ interface AppState {
 
   // Actions
   setGameState: (state: GameState) => void;
-  setPlayerAndEvolution: (name: string, color: string, evolution: Evolution) => void;
+  setPlayerAndEvolution: (name: string, color: string, evolution: Evolution, pattern: DuckPattern) => void;
   changeUser: () => void;
   startMapNodeActivity: (nodeId: number) => Promise<void>;
   updateGame: (deltaTime: number) => void;
@@ -105,6 +108,8 @@ interface AppState {
   consumeItem: (itemId: ConsumableItemId) => void;
   confirmStartRace: () => Promise<void>;
   clearActiveConsumables: () => void;
+  handleCheatCodeInput: (key: string) => void;
+  setIsCapsLockOn: (isOn: boolean) => void;
 
   // Online Actions
   setSocketStatus: (status: SocketStatus) => void;
@@ -117,6 +122,7 @@ interface AppState {
   // Other Mode Actions
   startCustomTextGame: (text: string) => void;
   startEnduranceGame: () => void;
+  startGhostRace: () => void;
 
   // Course Actions
   startCourseLesson: (lesson: CourseLesson) => void;
@@ -135,16 +141,19 @@ interface AppState {
   buyItem: (itemId: string) => void;
   startBossBattle: (bossId: string) => void;
   confirmStartBossBattle: () => Promise<void>;
+  setPlayerPattern: (pattern: DuckPattern) => void;
 
   toggleMute: () => void;
   setShowStatsModal: (show: boolean) => void;
   setShowLeaderboardModal: (show: boolean) => void;
   setShowAchievementsModal: (show: boolean) => void;
   setShowSettingsModal: (show: boolean) => void;
-  setShowTutorialModal: (show: boolean) => void;
   setShowCharacterModal: (show: boolean) => void;
+  setShowTutorialModal: (show: boolean) => void;
+  setShowPetModal: (show: boolean) => void;
   applySoundPack: (packId: PlayerSettings['activeSoundPackId']) => void;
   equipItem: (itemId: string) => void;
+  equipPet: (petId: PetId | null) => void;
   addToast: (toast: Omit<Toast, 'id'>) => void;
   removeToast: (id: string) => void;
   
@@ -170,6 +179,8 @@ export const useStore = create<AppState>((set, get) => ({
   activeConsumables: { 'wpm_booster': false, 'focus_goggles': false, 'energy_seed': false },
   wpmBoostEndTime: null,
   loadingMessage: '',
+  cheatCodeBuffer: '',
+  isCapsLockOn: false,
   
   socketStatus: 'disconnected',
   onlineRooms: [],
@@ -197,6 +208,7 @@ export const useStore = create<AppState>((set, get) => ({
   showSettingsModal: false,
   showTutorialModal: false,
   showCharacterModal: false,
+  showPetModal: false,
   toasts: [],
 
   persistentPlayerStats: { totalRaces: 0, wins: 0, bestWpm: 0, avgWpm: 0, avgAccuracy: 0 },
@@ -208,11 +220,12 @@ export const useStore = create<AppState>((set, get) => ({
 
   // Actions
   setGameState: (state) => set({ gameState: state }),
-  setPlayerAndEvolution: (name, color, evolution) => {
+  setPlayerAndEvolution: (name, color, evolution, pattern) => {
     const tutorialSeen = localStorage.getItem('gemini-type-racer-tutorial-seen') === 'true';
 
     const newCharacter = characterService.getDefaultCharacter(evolution);
     newCharacter.color = color;
+    newCharacter.pattern = pattern;
     characterService.saveCharacterData(newCharacter);
 
     set({ 
@@ -260,7 +273,13 @@ export const useStore = create<AppState>((set, get) => ({
       return;
     }
     
-    if (playerCharacter.energy < RACE_ENERGY_COST) {
+    const activePet = characterService.allPets.find(p => p.id === playerCharacter.activePet);
+    let energyCost = characterService.RACE_ENERGY_COST;
+    if (activePet?.bonus.type === 'ENERGY_SAVER') {
+        energyCost = Math.round(energyCost * (1 - activePet.bonus.value));
+    }
+    
+    if (playerCharacter.energy < energyCost) {
       addToast({ message: "Not enough energy to race!", type: 'error'});
       return;
     }
@@ -298,14 +317,22 @@ export const useStore = create<AppState>((set, get) => ({
     let boostEndTime: number | null = null;
     
     if (activeConsumables.wpm_booster) {
-        const item = allShopItems.find(i => i.id === 'wpm_booster');
-        const duration = (item?.effect.type === 'wpm_boost' ? item.effect.value : 10) * 1000;
+        const item = characterService.allShopItems.find(i => i.id === 'wpm_booster');
+        const duration = (item?.effect?.type === 'wpm_boost' ? item.effect.value : 10) * 1000;
         boostEndTime = Date.now() + duration;
         finalCharacter.inventory.wpm_booster--;
     }
     if (activeConsumables.focus_goggles) {
         finalCharacter.inventory.focus_goggles--;
     }
+    
+    const activePet = characterService.allPets.find(p => p.id === finalCharacter.activePet);
+    let energyCost = characterService.RACE_ENERGY_COST;
+    if (activePet?.bonus.type === 'ENERGY_SAVER') {
+        energyCost = Math.round(energyCost * (1 - activePet.bonus.value));
+    }
+    finalCharacter.energy -= energyCost;
+    
     characterService.saveCharacterData(finalCharacter);
 
     set({ 
@@ -322,7 +349,7 @@ export const useStore = create<AppState>((set, get) => ({
     const paragraph = await getTypingParagraph(RaceTheme.MOVIE_QUOTES, RaceMode.SOLO_MEDIUM);
     
     const initialPlayers: Player[] = [
-        { id: PLAYER_ID, name: get().playerName, isPlayer: true, progress: 0, wpm: 0, accuracy: 100, wpmHistory: [], character: playerCharacter },
+        { id: PLAYER_ID, name: get().playerName, isPlayer: true, progress: 0, wpm: 0, accuracy: 100, wpmHistory: [], character: get().playerCharacter },
     ];
     
     node.bots?.forEach((bot, i) => {
@@ -341,6 +368,41 @@ export const useStore = create<AppState>((set, get) => ({
 
   clearActiveConsumables: () => {
     set({ activeConsumables: { 'wpm_booster': false, 'focus_goggles': false, 'energy_seed': false } });
+  },
+
+  handleCheatCodeInput: (key) => {
+    if (get().gameState !== GameState.ADVENTURE_MAP) return;
+    
+    set(state => {
+      const newBuffer = (state.cheatCodeBuffer + key).slice(-20); // Keep buffer from getting too long
+      let characterUpdate = { ...state.playerCharacter };
+      let toast: Omit<Toast, 'id'> | null = null;
+      let bufferCleared = false;
+
+      if (newBuffer.endsWith('quackmorecoins')) {
+        characterUpdate.coins += 1000;
+        toast = { message: 'Cheat Activated: +1000 Coins!', type: 'success' };
+        bufferCleared = true;
+      } else if (newBuffer.endsWith('fullenergy')) {
+        characterUpdate.energy = characterUpdate.maxEnergy;
+        toast = { message: 'Cheat Activated: Energy Restored!', type: 'success' };
+        bufferCleared = true;
+      }
+      
+      if (toast) {
+        get().addToast(toast);
+        characterService.saveCharacterData(characterUpdate);
+        return { playerCharacter: characterUpdate, cheatCodeBuffer: bufferCleared ? '' : newBuffer };
+      }
+
+      return { cheatCodeBuffer: newBuffer };
+    });
+  },
+
+  setIsCapsLockOn: (isOn) => {
+    if (get().isCapsLockOn !== isOn) {
+        set({ isCapsLockOn: isOn });
+    }
   },
 
   updateGame: (deltaTime: number) => {
@@ -394,7 +456,7 @@ export const useStore = create<AppState>((set, get) => ({
     });
   },
   endRace: () => {
-    const { gameState, raceMode } = get();
+    const { gameState, raceMode, playerCharacter } = get();
     if (gameState === GameState.RESULTS) return;
 
     if (raceMode === RaceMode.PARTY) {
@@ -431,6 +493,13 @@ export const useStore = create<AppState>((set, get) => ({
                 }
             }
             playerResultForEffects = state.players.find(p => p.isPlayer);
+            // This is now inside the main race flow, so let the outer logic handle stats and ghost data
+             const player = state.players.find(p => p.isPlayer);
+             const { bestWpm } = state.persistentPlayerStats;
+             if (player && state.playerStats.wpm >= bestWpm && state.playerStats.wpm > 0) {
+                 const ghostData: GhostData = { wpmHistory: state.wpmHistory, finalWpm: state.playerStats.wpm, text: state.textToType };
+                 localStorage.setItem('gemini-type-racer-ghost', JSON.stringify(ghostData));
+             }
             return {
                 ...state,
                 gameState: GameState.RESULTS,
@@ -471,7 +540,7 @@ export const useStore = create<AppState>((set, get) => ({
             newPersistentStats = { totalRaces: newTotalRaces, wins: newWins, bestWpm: newBestWpm, avgWpm: Math.round(newAvgWpm), avgAccuracy: Math.round(newAvgAccuracy) };
             localStorage.setItem('gemini-type-racer-stats', JSON.stringify(newPersistentStats));
 
-            if (state.raceMode !== RaceMode.GHOST && state.playerStats.wpm >= newBestWpm) {
+            if (state.raceMode !== RaceMode.GHOST && state.playerStats.wpm >= newBestWpm && state.playerStats.wpm > 0) {
                  const ghostData: GhostData = { wpmHistory: state.wpmHistory, finalWpm: state.playerStats.wpm, text: state.textToType };
                  localStorage.setItem('gemini-type-racer-ghost', JSON.stringify(ghostData));
             }
@@ -480,6 +549,16 @@ export const useStore = create<AppState>((set, get) => ({
             if (player.rank === 1) coinsGained = 50;
             else if (player.rank === 2) coinsGained = 25;
             else if (player.rank === 3) coinsGained = 10;
+            
+            // Apply Coin Bonus from pet
+            const activePet = characterService.allPets.find(p => p.id === playerCharacter.activePet);
+            if (activePet?.bonus.type === 'COIN_BONUS') {
+                const bonusCoins = Math.round(coinsGained * activePet.bonus.value);
+                if (bonusCoins > 0) {
+                    get().addToast({ message: `+${bonusCoins} Pet Coin Bonus!`, type: 'success' });
+                    coinsGained += bonusCoins;
+                }
+            }
             
             if (state.raceMode === RaceMode.BOSS_BATTLE) {
                 const bossInRace = state.players.find(p => !p.isPlayer);
@@ -508,7 +587,6 @@ export const useStore = create<AppState>((set, get) => ({
             finalCharacterState = {
                 ...finalCharacterState,
                 coins: finalCharacterState.coins + coinsGained,
-                energy: Math.max(0, finalCharacterState.energy - RACE_ENERGY_COST)
             };
             characterService.saveCharacterData(finalCharacterState);
 
@@ -576,12 +654,26 @@ export const useStore = create<AppState>((set, get) => ({
   _addXp: (amount) => {
     const { playerCharacter, addToast } = get();
     let finalXp = amount;
-    if (playerCharacter.evolution === Evolution.INTELLECT) {
-        finalXp = Math.round(amount * 1.10); // 10% bonus
-        if (amount > 0) {
-            addToast({ message: `+10% Intellect XP Bonus!`, type: 'success' });
+    
+    // Apply Pet Bonus
+    const activePet = characterService.allPets.find(p => p.id === playerCharacter.activePet);
+    if (activePet?.bonus.type === 'XP_BONUS') {
+        const bonusXp = Math.round(amount * activePet.bonus.value);
+        if (bonusXp > 0) {
+            finalXp += bonusXp;
+            addToast({ message: `+${bonusXp} Pet XP Bonus!`, type: 'success' });
         }
     }
+    
+    // Apply Evolution Bonus
+    if (playerCharacter.evolution === Evolution.INTELLECT) {
+        const evolutionBonus = Math.round(amount * 0.10); // 10% bonus on original amount
+        if (evolutionBonus > 0) {
+            finalXp += evolutionBonus;
+            addToast({ message: `+${evolutionBonus} Intellect XP Bonus!`, type: 'success' });
+        }
+    }
+
     const { newCharacterState, leveledUp, unlockedItems } = characterService.addXp(playerCharacter, finalXp);
     
     characterService.saveCharacterData(newCharacterState);
@@ -668,6 +760,46 @@ export const useStore = create<AppState>((set, get) => ({
     set({ textToType: generateEnduranceText(), players: [{ id: PLAYER_ID, name: get().playerName, isPlayer: true, progress: 0, wpm: 0, accuracy: 100, character: get().playerCharacter }], rankCounter: 1, raceMode: RaceMode.ENDURANCE });
     set({ gameState: GameState.COUNTDOWN });
   },
+  startGhostRace: () => {
+    const ghostDataString = localStorage.getItem('gemini-type-racer-ghost');
+    if (!ghostDataString) {
+        get().addToast({ message: "No ghost data found!", type: 'error' });
+        return;
+    }
+    const ghostData: GhostData = JSON.parse(ghostDataString);
+    get()._resetTypingState();
+    
+    const ghostPlayer: Player = {
+        id: 'ghost-player',
+        name: `${get().playerName}'s Ghost`,
+        isPlayer: false,
+        isGhost: true,
+        progress: 0,
+        wpm: 0,
+        accuracy: 100,
+        wpmHistory: ghostData.wpmHistory,
+        targetWpm: ghostData.finalWpm,
+    };
+    
+    const player: Player = {
+        id: PLAYER_ID,
+        name: get().playerName,
+        isPlayer: true,
+        progress: 0,
+        wpm: 0,
+        accuracy: 100,
+        character: get().playerCharacter,
+    };
+
+    set({
+        raceMode: RaceMode.GHOST,
+        textToType: ghostData.text,
+        players: [player, ghostPlayer],
+        elapsedTime: 0,
+        rankCounter: 1,
+        gameState: GameState.COUNTDOWN,
+    });
+  },
 
   // Course Actions
   startCourseLesson: (lesson) => {
@@ -728,11 +860,18 @@ export const useStore = create<AppState>((set, get) => ({
 
   startTraining: (stat) => {
     const { playerCharacter, addToast } = get();
-    if (playerCharacter.energy < TRAINING_ENERGY_COST) {
+    
+    const activePet = characterService.allPets.find(p => p.id === playerCharacter.activePet);
+    let energyCost = characterService.TRAINING_ENERGY_COST;
+    if (activePet?.bonus.type === 'ENERGY_SAVER') {
+        energyCost = Math.round(energyCost * (1 - activePet.bonus.value));
+    }
+
+    if (playerCharacter.energy < energyCost) {
         addToast({ message: "Not enough energy to train!", type: 'error' });
         return;
     }
-    const newCharacter = { ...playerCharacter, energy: playerCharacter.energy - TRAINING_ENERGY_COST };
+    const newCharacter = { ...playerCharacter, energy: playerCharacter.energy - energyCost };
     characterService.saveCharacterData(newCharacter);
     set({ playerCharacter: newCharacter });
     if (stat === 'running') set({ gameState: GameState.TRAINING_RUNNING });
@@ -748,12 +887,15 @@ export const useStore = create<AppState>((set, get) => ({
     set({ playerCharacter: newCharacterState, gameState: GameState.TRAINING_GROUND });
   },
   buyItem: (itemId) => {
-    const { playerCharacter, addToast } = get();
-    const { newCharacterState, success, message } = characterService.buyItem(playerCharacter, itemId);
+    const { playerCharacter, addToast, unlockedCustomizations } = get();
+    const { newCharacterState, success, message, unlockedPet } = characterService.buyItem(playerCharacter, itemId, unlockedCustomizations.unlockedPets);
     if (success) {
         characterService.saveCharacterData(newCharacterState);
         set({ playerCharacter: newCharacterState });
         addToast({ message, type: 'success' });
+        if (unlockedPet) {
+            set({ unlockedCustomizations: customizationService.getUnlocked() });
+        }
     } else {
         addToast({ message, type: 'error' });
     }
@@ -779,12 +921,17 @@ export const useStore = create<AppState>((set, get) => ({
         set({ gameState: GameState.ADVENTURE_MAP, currentBossIntro: null });
         return;
     }
-    if (playerCharacter.energy < RACE_ENERGY_COST) {
+    const activePet = characterService.allPets.find(p => p.id === playerCharacter.activePet);
+    let energyCost = characterService.RACE_ENERGY_COST;
+    if (activePet?.bonus.type === 'ENERGY_SAVER') {
+        energyCost = Math.round(energyCost * (1 - activePet.bonus.value));
+    }
+    if (playerCharacter.energy < energyCost) {
         addToast({ message: "Not enough energy to race!", type: 'error' });
         set({ gameState: GameState.ADVENTURE_MAP, currentBossIntro: null });
         return;
     }
-    const newCharacter = { ...playerCharacter, coins: playerCharacter.coins - boss.entryFee };
+    const newCharacter = { ...playerCharacter, coins: playerCharacter.coins - boss.entryFee, energy: playerCharacter.energy - energyCost };
     characterService.saveCharacterData(newCharacter);
     set({ playerCharacter: newCharacter });
     _resetTypingState();
@@ -796,12 +943,19 @@ export const useStore = create<AppState>((set, get) => ({
     });
     const paragraph = await getTypingParagraph(RaceTheme.MOVIE_QUOTES, RaceMode.SOLO_HARD);
     const players: Player[] = [
-        { id: PLAYER_ID, name: get().playerName, isPlayer: true, progress: 0, wpm: 0, accuracy: 100, wpmHistory: [], character: playerCharacter },
+        { id: PLAYER_ID, name: get().playerName, isPlayer: true, progress: 0, wpm: 0, accuracy: 100, wpmHistory: [], character: get().playerCharacter },
         { id: boss.id, name: boss.name, isPlayer: false, progress: 0, wpm: 0, accuracy: 99, targetWpm: boss.wpm, character: boss.character },
     ];
     set({ players, textToType: paragraph, currentBossIntro: null, gameState: GameState.COUNTDOWN, elapsedTime: 0 });
   },
 
+  setPlayerPattern: (pattern) => {
+    set(state => {
+        const newCharacter = { ...state.playerCharacter, pattern };
+        characterService.saveCharacterData(newCharacter);
+        return { playerCharacter: newCharacter };
+    });
+  },
 
   toggleMute: () => set({ isMuted: soundService.toggleMute() }),
   setShowStatsModal: (show) => set({ showStatsModal: show }),
@@ -813,6 +967,7 @@ export const useStore = create<AppState>((set, get) => ({
     set({ showTutorialModal: show });
     if (!show) localStorage.setItem('gemini-type-racer-tutorial-seen', 'true');
   },
+  setShowPetModal: (show) => set({ showPetModal: show }),
   applySoundPack: (packId) => {
     const newSettings: PlayerSettings = { ...get().playerSettings, activeSoundPackId: packId };
     customizationService.savePlayerSettings(newSettings);
@@ -822,12 +977,20 @@ export const useStore = create<AppState>((set, get) => ({
   equipItem: (itemId: string) => {
     const { playerCharacter } = get();
     const item = characterService.allCustomizationItems.find(i => i.id === itemId);
-    if (!item) return;
+    if (!item || item.type !== 'hat') return;
     const newCharacter = { ...playerCharacter };
-    const currentlyEquippedId = newCharacter.equippedItems[item.type];
-    newCharacter.equippedItems[item.type] = currentlyEquippedId === itemId ? null : itemId;
+    const currentlyEquippedId = newCharacter.equippedItems.hat;
+    newCharacter.equippedItems.hat = currentlyEquippedId === itemId ? null : itemId;
     characterService.saveCharacterData(newCharacter);
     set({ playerCharacter: newCharacter });
+  },
+  equipPet: (petId) => {
+      set(state => {
+          const currentPet = state.playerCharacter.activePet;
+          const newCharacter = { ...state.playerCharacter, activePet: currentPet === petId ? null : petId };
+          characterService.saveCharacterData(newCharacter);
+          return { playerCharacter: newCharacter };
+      });
   },
   addToast: (toast) => {
     const id = Date.now().toString();
